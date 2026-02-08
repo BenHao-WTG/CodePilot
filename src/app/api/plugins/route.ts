@@ -61,8 +61,8 @@ function discoverSkills(): SkillInfo[] {
     }
   }
 
-  // Scan project-level .claude/commands
-  const projectCommandsDir = path.join(process.cwd(), '.claude', 'commands');
+  // Scan project-level .copilot/commands
+  const projectCommandsDir = path.join(process.cwd(), '.copilot', 'commands');
   if (fs.existsSync(projectCommandsDir)) {
     try {
       const files = fs.readdirSync(projectCommandsDir);

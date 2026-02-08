@@ -4,17 +4,15 @@ import path from 'path';
 import os from 'os';
 import type { PluginInfo, ErrorResponse, SuccessResponse } from '@/types';
 
-// For backward compatibility, we still check the .claude directory
 function getConfigDir(): string {
   const home = os.homedir();
   const copilotDir = path.join(home, '.copilot');
-  const claudeDir = path.join(home, '.claude');
   
-  // Prefer .copilot if it exists, otherwise use .claude for backward compatibility
-  if (fs.existsSync(copilotDir)) {
-    return copilotDir;
+  // Use .copilot directory
+  if (!fs.existsSync(copilotDir)) {
+    fs.mkdirSync(copilotDir, { recursive: true });
   }
-  return claudeDir;
+  return copilotDir;
 }
 
 function getSettingsPath(): string {

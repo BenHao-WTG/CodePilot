@@ -4,11 +4,11 @@ import path from "path";
 import os from "os";
 
 function getGlobalCommandsDir(): string {
-  return path.join(os.homedir(), ".claude", "commands");
+  return path.join(os.homedir(), ".copilot", "commands");
 }
 
 function getProjectCommandsDir(): string {
-  return path.join(process.cwd(), ".claude", "commands");
+  return path.join(process.cwd(), ".copilot", "commands");
 }
 
 function getInstalledSkillsDir(): string {

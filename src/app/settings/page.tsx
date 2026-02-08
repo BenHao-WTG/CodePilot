@@ -72,7 +72,7 @@ function ApiConfigSection() {
       .then((r) => r.json())
       .then((data) => {
         const s = data.settings || {};
-        setToken(s.github_token || s.anthropic_auth_token || "");
+        setToken(s.github_token || "");
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -162,7 +162,7 @@ function ApiConfigSection() {
   );
 }
 
-// --- Claude CLI Settings Section (manages ~/.claude/settings.json) ---
+// --- GitHub Copilot CLI Settings Section (manages ~/.copilot/settings.json) ---
 function SettingsPageInner() {
   const [settings, setSettings] = useState<SettingsData>({});
   const [originalSettings, setOriginalSettings] = useState<SettingsData>({});

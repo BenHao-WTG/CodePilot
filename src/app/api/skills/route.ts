@@ -12,16 +12,16 @@ interface SkillFile {
 }
 
 function getGlobalCommandsDir(): string {
-  return path.join(os.homedir(), ".claude", "commands");
+  return path.join(os.homedir(), ".copilot", "commands");
 }
 
 function getProjectCommandsDir(cwd?: string): string {
-  return path.join(cwd || process.cwd(), ".claude", "commands");
+  return path.join(cwd || process.cwd(), ".copilot", "commands");
 }
 
 function getPluginCommandsDirs(): string[] {
   const dirs: string[] = [];
-  const marketplacesDir = path.join(os.homedir(), ".claude", "plugins", "marketplaces");
+  const marketplacesDir = path.join(os.homedir(), ".copilot", "plugins", "marketplaces");
   if (!fs.existsSync(marketplacesDir)) return dirs;
 
   try {
@@ -147,7 +147,7 @@ function scanDirectory(
       const fullPath = path.join(dir, entry.name);
 
       if (entry.isDirectory()) {
-        // Recurse into subdirectories (e.g. ~/.claude/commands/review/pr.md)
+        // Recurse into subdirectories (e.g. ~/.copilot/commands/review/pr.md)
         const subPrefix = prefix ? `${prefix}:${entry.name}` : entry.name;
         skills.push(...scanDirectory(fullPath, source, subPrefix));
         continue;
