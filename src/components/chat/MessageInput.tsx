@@ -388,7 +388,7 @@ export function MessageInput({
           >
             <PromptInputTextarea
               ref={textareaRef}
-              placeholder="Message Claude..."
+              placeholder="Message Copilot..."
               value={inputValue}
               onChange={(e) => handleInputChange(e.currentTarget.value)}
               onKeyDown={handleKeyDown}

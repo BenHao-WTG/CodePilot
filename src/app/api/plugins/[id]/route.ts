@@ -4,12 +4,21 @@ import path from 'path';
 import os from 'os';
 import type { PluginInfo, ErrorResponse, SuccessResponse } from '@/types';
 
-function getClaudeDir(): string {
-  return path.join(os.homedir(), '.claude');
+// For backward compatibility, we still check the .claude directory
+function getConfigDir(): string {
+  const home = os.homedir();
+  const copilotDir = path.join(home, '.copilot');
+  const claudeDir = path.join(home, '.claude');
+  
+  // Prefer .copilot if it exists, otherwise use .claude for backward compatibility
+  if (fs.existsSync(copilotDir)) {
+    return copilotDir;
+  }
+  return claudeDir;
 }
 
 function getSettingsPath(): string {
-  return path.join(getClaudeDir(), 'settings.json');
+  return path.join(getConfigDir(), 'settings.json');
 }
 
 function readSettings(): Record<string, unknown> {

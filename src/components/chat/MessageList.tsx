@@ -53,8 +53,8 @@ export function MessageList({
     return (
       <div className="flex flex-1 items-center justify-center">
         <ConversationEmptyState
-          title="Claude Chat"
-          description="Start a conversation with Claude. Ask questions, get help with code, or explore ideas."
+          title="GitHub Copilot Chat"
+          description="Start a conversation with GitHub Copilot. Ask questions, get help with code, or explore ideas."
           icon={
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/20 to-purple-600/20">
               <HugeiconsIcon icon={BotIcon} className="h-8 w-8 text-violet-500" />
