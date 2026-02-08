@@ -200,13 +200,13 @@ function startServer(port: number): ChildProcess {
       path.join(localAppData, 'npm'),
       path.join(home, '.npm-global', 'bin'),
       path.join(home, '.local', 'bin'),
-      path.join(home, '.claude', 'bin'),
+      path.join(home, '.copilot', 'bin'),
     ];
     const allParts = [shellPath, ...winExtra].join(sep).split(sep).filter(Boolean);
     constructedPath = [...new Set(allParts)].join(sep);
   } else {
     const basePath = `/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin`;
-    const raw = `${basePath}:${home}/.npm-global/bin:${home}/.local/bin:${home}/.claude/bin:${shellPath}`;
+    const raw = `${basePath}:${home}/.npm-global/bin:${home}/.local/bin:${home}/.copilot/bin:${shellPath}`;
     const allParts = raw.split(':').filter(Boolean);
     constructedPath = [...new Set(allParts)].join(':');
   }

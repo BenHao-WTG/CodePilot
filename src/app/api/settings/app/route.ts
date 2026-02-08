@@ -8,8 +8,6 @@ import { getSetting, setSetting } from '@/lib/db';
 
 const ALLOWED_KEYS = [
   'github_token',
-  'anthropic_auth_token', // Legacy support for migration
-  'anthropic_base_url',   // Legacy support for migration
 ];
 
 export async function GET() {
@@ -19,7 +17,7 @@ export async function GET() {
       const value = getSetting(key);
       if (value !== undefined) {
         // Mask tokens for security (only return last 8 chars)
-        if ((key === 'github_token' || key === 'anthropic_auth_token') && value.length > 8) {
+        if (key === 'github_token' && value.length > 8) {
           result[key] = '***' + value.slice(-8);
         } else {
           result[key] = value;
@@ -47,7 +45,7 @@ export async function PUT(request: NextRequest) {
       const strValue = String(value ?? '').trim();
       if (strValue) {
         // Don't overwrite token if user sent the masked version back
-        if ((key === 'github_token' || key === 'anthropic_auth_token') && strValue.startsWith('***')) {
+        if (key === 'github_token' && strValue.startsWith('***')) {
           continue;
         }
         setSetting(key, strValue);

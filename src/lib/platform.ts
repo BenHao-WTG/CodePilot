@@ -17,7 +17,7 @@ function needsShell(binPath: string): boolean {
 }
 
 /**
- * Extra PATH directories to search for Copilot/Claude CLI and other tools.
+ * Extra PATH directories to search for GitHub Copilot CLI and other tools.
  */
 export function getExtraPathDirs(): string[] {
   const home = os.homedir();
@@ -29,7 +29,6 @@ export function getExtraPathDirs(): string[] {
       path.join(localAppData, 'npm'),
       path.join(home, '.npm-global', 'bin'),
       path.join(home, '.copilot', 'bin'),
-      path.join(home, '.claude', 'bin'),
       path.join(home, '.local', 'bin'),
       path.join(home, '.nvm', 'current', 'bin'),
     ];
@@ -43,40 +42,6 @@ export function getExtraPathDirs(): string[] {
     path.join(home, '.nvm', 'current', 'bin'),
     path.join(home, '.local', 'bin'),
     path.join(home, '.copilot', 'bin'),
-    path.join(home, '.claude', 'bin'),
-  ];
-}
-
-/**
- * Claude CLI candidate installation paths.
- */
-export function getClaudeCandidatePaths(): string[] {
-  const home = os.homedir();
-  if (isWindows) {
-    const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
-    const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
-    const exts = ['.cmd', '.exe', '.bat', ''];
-    const baseDirs = [
-      path.join(appData, 'npm'),
-      path.join(localAppData, 'npm'),
-      path.join(home, '.npm-global', 'bin'),
-      path.join(home, '.claude', 'bin'),
-      path.join(home, '.local', 'bin'),
-    ];
-    const candidates: string[] = [];
-    for (const dir of baseDirs) {
-      for (const ext of exts) {
-        candidates.push(path.join(dir, 'claude' + ext));
-      }
-    }
-    return candidates;
-  }
-  return [
-    '/usr/local/bin/claude',
-    '/opt/homebrew/bin/claude',
-    path.join(home, '.npm-global', 'bin', 'claude'),
-    path.join(home, '.local', 'bin', 'claude'),
-    path.join(home, '.claude', 'bin', 'claude'),
   ];
 }
 
@@ -94,75 +59,6 @@ export function getExpandedPath(): string {
     }
   }
   return parts.join(path.delimiter);
-}
-
-/**
- * Find and validate the Claude CLI binary.
- * Tests each candidate with --version before returning.
- */
-export function findClaudeBinary(): string | undefined {
-  // Try known candidate paths first
-  for (const p of getClaudeCandidatePaths()) {
-    try {
-      execFileSync(p, ['--version'], {
-        timeout: 3000,
-        stdio: 'pipe',
-        shell: needsShell(p),
-      });
-      return p;
-    } catch {
-      // not found, try next
-    }
-  }
-
-  // Fallback: use `where` (Windows) or `which` (Unix) with expanded PATH
-  try {
-    const cmd = isWindows ? 'where' : '/usr/bin/which';
-    const args = isWindows ? ['claude'] : ['claude'];
-    const result = execFileSync(cmd, args, {
-      timeout: 3000,
-      stdio: 'pipe',
-      env: { ...process.env, PATH: getExpandedPath() },
-      shell: isWindows,
-    });
-    // where.exe may return multiple lines; try each with --version validation
-    const lines = result.toString().trim().split(/\r?\n/);
-    for (const line of lines) {
-      const candidate = line.trim();
-      if (!candidate) continue;
-      try {
-        execFileSync(candidate, ['--version'], {
-          timeout: 3000,
-          stdio: 'pipe',
-          shell: needsShell(candidate),
-        });
-        return candidate;
-      } catch {
-        continue;
-      }
-    }
-  } catch {
-    // not found
-  }
-
-  return undefined;
-}
-
-/**
- * Execute claude --version and return the version string.
- * Handles .cmd shell execution on Windows.
- */
-export async function getClaudeVersion(claudePath: string): Promise<string | null> {
-  try {
-    const { stdout } = await execFileAsync(claudePath, ['--version'], {
-      timeout: 5000,
-      env: { ...process.env, PATH: getExpandedPath() },
-      shell: needsShell(claudePath),
-    });
-    return stdout.trim() || null;
-  } catch {
-    return null;
-  }
 }
 
 /**

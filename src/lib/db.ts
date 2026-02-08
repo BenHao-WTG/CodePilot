@@ -24,12 +24,8 @@ export function getDb(): Database.Database {
         // Old Electron userData paths (app.getPath('userData'))
         path.join(home, 'Library', 'Application Support', 'CodePilot', 'codepilot.db'),
         path.join(home, 'Library', 'Application Support', 'codepilot', 'codepilot.db'),
-        path.join(home, 'Library', 'Application Support', 'Claude GUI', 'codepilot.db'),
         // Old dev-mode fallback
         path.join(process.cwd(), 'data', 'codepilot.db'),
-        // Legacy name
-        path.join(home, 'Library', 'Application Support', 'CodePilot', 'claude-gui.db'),
-        path.join(home, 'Library', 'Application Support', 'codepilot', 'claude-gui.db'),
       ];
       for (const oldPath of oldPaths) {
         if (fs.existsSync(oldPath)) {

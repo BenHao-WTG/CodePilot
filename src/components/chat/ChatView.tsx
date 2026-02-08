@@ -269,7 +269,7 @@ export function ChatView({ sessionId, initialMessages = [], modelName, initialMo
                     const statusData = JSON.parse(event.data);
                     if (statusData.session_id) {
                       // Init event — show briefly then clear so tool status can take over
-                      setStatusText(`Connected (${statusData.model || 'claude'})`);
+                      setStatusText(`Connected (${statusData.model || 'GitHub Copilot'})`);
                       setTimeout(() => setStatusText(undefined), 2000);
                     } else if (statusData.notification) {
                       // Notification from SDK hooks — show as progress

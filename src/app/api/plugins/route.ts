@@ -17,19 +17,15 @@ export interface SkillsResponse {
   plugins: SkillInfo[];
 }
 
-// For backward compatibility, we still check the .claude directory
-// as users may have existing skills/commands there
 function getConfigDir(): string {
-  // Try .copilot first, then fall back to .claude for backward compatibility
   const home = os.homedir();
   const copilotDir = path.join(home, '.copilot');
-  const claudeDir = path.join(home, '.claude');
   
-  // Prefer .copilot if it exists and has commands, otherwise use .claude for backward compatibility
-  if (fs.existsSync(copilotDir) && fs.existsSync(path.join(copilotDir, 'commands'))) {
-    return copilotDir;
+  // Use .copilot directory
+  if (!fs.existsSync(copilotDir)) {
+    fs.mkdirSync(copilotDir, { recursive: true });
   }
-  return claudeDir;
+  return copilotDir;
 }
 
 function discoverSkills(): SkillInfo[] {
