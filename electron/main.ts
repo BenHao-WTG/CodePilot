@@ -73,21 +73,31 @@ function checkNativeModuleABI(): void {
  * Read the user's full shell environment by running a login shell.
  * When Electron is launched from Dock/Finder, process.env is very limited
  * and won't include vars from .zshrc/.bashrc (e.g. API keys).
+ * 
+ * This is now async and non-blocking to improve startup time.
  */
-function loadUserShellEnv(): Record<string, string> {
+async function loadUserShellEnvAsync(): Promise<Record<string, string>> {
   // Only macOS needs login-shell env loading; Windows/Linux GUI apps inherit full env
   if (process.platform !== 'darwin') {
     return {};
   }
+  const startTime = Date.now();
   try {
     const shell = process.env.SHELL || '/bin/zsh';
-    const result = execFileSync(shell, ['-ilc', 'env'], {
-      timeout: 5000,
+    console.log(`[Startup] Loading shell environment from ${shell}...`);
+    
+    const { execFile } = require('child_process');
+    const { promisify } = require('util');
+    const execFileAsync = promisify(execFile);
+    
+    const { stdout } = await execFileAsync(shell, ['-ilc', 'env'], {
+      timeout: 2000, // Reduced from 3000ms to 2000ms
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
+      maxBuffer: 1024 * 1024, // 1MB buffer
     });
+    
     const env: Record<string, string> = {};
-    for (const line of result.split('\n')) {
+    for (const line of stdout.split('\n')) {
       const idx = line.indexOf('=');
       if (idx > 0) {
         const key = line.slice(0, idx);
@@ -95,10 +105,12 @@ function loadUserShellEnv(): Record<string, string> {
         env[key] = value;
       }
     }
-    console.log(`Loaded ${Object.keys(env).length} env vars from user shell`);
+    const elapsed = Date.now() - startTime;
+    console.log(`[Startup] Loaded ${Object.keys(env).length} env vars from user shell in ${elapsed}ms`);
     return env;
   } catch (err) {
-    console.warn('Failed to load user shell env:', err);
+    const elapsed = Date.now() - startTime;
+    console.warn(`[Startup] Failed to load user shell env after ${elapsed}ms (will use process.env):`, err);
     return {};
   }
 }
@@ -122,7 +134,12 @@ function getPort(): Promise<number> {
 
 async function waitForServer(port: number, timeout = 30000): Promise<void> {
   const start = Date.now();
+  console.log(`[Startup] Waiting for server on port ${port}...`);
+  let attempts = 0;
+  let pollInterval = 50; // Start with 50ms polling
+  
   while (Date.now() - start < timeout) {
+    attempts++;
     // If the server process already exited, fail fast
     if (serverProcess && serverProcess.exitCode !== null) {
       throw new Error(
@@ -136,14 +153,18 @@ async function waitForServer(port: number, timeout = 30000): Promise<void> {
           else reject(new Error(`Status ${res.statusCode}`));
         });
         req.on('error', reject);
-        req.setTimeout(1000, () => {
+        req.setTimeout(500, () => {
           req.destroy();
           reject(new Error('timeout'));
         });
       });
+      const elapsed = Date.now() - start;
+      console.log(`[Startup] Server ready after ${elapsed}ms (${attempts} attempts)`);
       return;
     } catch {
-      await new Promise(r => setTimeout(r, 200));
+      // Exponential backoff: 50ms -> 100ms -> 200ms (max)
+      await new Promise(r => setTimeout(r, pollInterval));
+      if (pollInterval < 200) pollInterval = Math.min(pollInterval * 2, 200);
     }
   }
   throw new Error(
@@ -292,11 +313,18 @@ function createWindow(port: number) {
 }
 
 app.whenReady().then(async () => {
-  // Load user's full shell environment (API keys, PATH, etc.)
-  userShellEnv = loadUserShellEnv();
-
+  const appStartTime = Date.now();
+  console.log('[Startup] App ready, initializing...');
+  
+  // Start loading shell environment asynchronously (don't wait for it)
+  const shellEnvStartTime = Date.now();
+  const shellEnvPromise = loadUserShellEnvAsync();
+  // Don't await here - continue with other startup tasks
+  
   // Verify native module ABI compatibility before starting the server
+  const abiCheckStartTime = Date.now();
   checkNativeModuleABI();
+  console.log(`[Startup] ABI check completed in ${Date.now() - abiCheckStartTime}ms`);
 
   // Set macOS Dock icon
   if (process.platform === 'darwin' && app.dock) {
@@ -309,19 +337,38 @@ app.whenReady().then(async () => {
 
     if (isDev) {
       port = 3000;
-      console.log(`Dev mode: connecting to http://127.0.0.1:${port}`);
+      console.log(`[Startup] Dev mode: connecting to http://127.0.0.1:${port}`);
+      // Still wait for shell env in dev mode for API keys
+      userShellEnv = await shellEnvPromise;
+      console.log(`[Startup] Shell env loaded in ${Date.now() - shellEnvStartTime}ms`);
     } else {
+      const portStartTime = Date.now();
       port = await getPort();
-      console.log(`Starting server on port ${port}...`);
+      console.log(`[Startup] Got free port ${port} in ${Date.now() - portStartTime}ms`);
+      
+      // Wait for shell env before starting server (in parallel if possible)
+      const shellEnvWaitStart = Date.now();
+      userShellEnv = await shellEnvPromise;
+      console.log(`[Startup] Shell env loaded in ${Date.now() - shellEnvWaitStart}ms (total: ${Date.now() - shellEnvStartTime}ms)`);
+      
+      const serverStartTime = Date.now();
+      console.log('[Startup] Starting server process...');
       serverProcess = startServer(port);
+      console.log(`[Startup] Server process spawned in ${Date.now() - serverStartTime}ms`);
+      
+      const waitStartTime = Date.now();
       await waitForServer(port);
-      console.log('Server is ready');
+      console.log(`[Startup] Server wait completed in ${Date.now() - waitStartTime}ms`);
+      console.log('[Startup] Server is ready');
     }
 
     serverPort = port;
+    const windowStartTime = Date.now();
     createWindow(port);
+    console.log(`[Startup] Window created in ${Date.now() - windowStartTime}ms`);
+    console.log(`[Startup] Total startup time: ${Date.now() - appStartTime}ms`);
   } catch (err) {
-    console.error('Failed to start:', err);
+    console.error('[Startup] Failed to start:', err);
     dialog.showErrorBox(
       'CodePilot - Failed to Start',
       `The internal server could not start.\n\n${err instanceof Error ? err.message : String(err)}\n\nPlease try restarting the application.`
