@@ -48,7 +48,7 @@ export async function GET(
   const pluginName = decodeURIComponent(id);
 
   // Check in commands directory
-  const commandsDir = path.join(getClaudeDir(), 'commands');
+  const commandsDir = path.join(getConfigDir(), 'commands');
   const filePath = path.join(commandsDir, `${pluginName}.md`);
 
   if (fs.existsSync(filePath)) {
