@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { resolvePendingPermission } from '@/lib/permission-registry';
-import type { PermissionResponseRequest } from '@/types';
-import type { PermissionResult, PermissionUpdate } from '@anthropic-ai/claude-agent-sdk';
+import type { PermissionResponseRequest, PermissionResult, PermissionUpdate } from '@/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

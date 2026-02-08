@@ -17,16 +17,27 @@ export interface SkillsResponse {
   plugins: SkillInfo[];
 }
 
-function getClaudeDir(): string {
-  return path.join(os.homedir(), '.claude');
+// For backward compatibility, we still check the .claude directory
+// as users may have existing skills/commands there
+function getConfigDir(): string {
+  // Try .copilot first, then fall back to .claude for backward compatibility
+  const home = os.homedir();
+  const copilotDir = path.join(home, '.copilot');
+  const claudeDir = path.join(home, '.claude');
+  
+  // Prefer .copilot if it exists and has commands, otherwise use .claude for backward compatibility
+  if (fs.existsSync(copilotDir) && fs.existsSync(path.join(copilotDir, 'commands'))) {
+    return copilotDir;
+  }
+  return claudeDir;
 }
 
 function discoverSkills(): SkillInfo[] {
-  const claudeDir = getClaudeDir();
+  const configDir = getConfigDir();
   const skills: SkillInfo[] = [];
 
   // Scan for .md skill files in global commands directory
-  const globalCommandsDir = path.join(claudeDir, 'commands');
+  const globalCommandsDir = path.join(configDir, 'commands');
   if (fs.existsSync(globalCommandsDir)) {
     try {
       const files = fs.readdirSync(globalCommandsDir);

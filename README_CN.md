@@ -1,7 +1,7 @@
 <img src="docs/icon-readme.png" width="32" height="32" alt="CodePilot" style="vertical-align: middle; margin-right: 8px;" /> CodePilot
 ===
 
-**Claude Code 的原生桌面客户端** -- 通过可视化界面进行对话、编码和项目管理，无需在终端中操作。
+**GitHub Copilot 的原生桌面客户端** -- 通过可视化界面进行对话、编码和项目管理，无需在终端中操作。
 
 [English](./README.md)
 
@@ -13,15 +13,15 @@
 
 ## ✨ 功能特性
 
-- 💬 **实时对话编码** -- 流式接收 Claude 的响应，支持完整的 Markdown 渲染、语法高亮代码块和工具调用可视化
+- 💬 **实时对话编码** -- 流式接收 GitHub Copilot 的响应，支持完整的 Markdown 渲染、语法高亮代码块和工具调用可视化
 - 📂 **会话管理** -- 创建、重命名、归档和恢复聊天会话。所有对话本地持久化存储在 SQLite 中，重启不丢失
-- 🎯 **项目感知上下文** -- 为每个会话选择工作目录。右侧面板实时展示文件树和文件预览，随时了解 Claude 正在查看的内容
+- 🎯 **项目感知上下文** -- 为每个会话选择工作目录。右侧面板实时展示文件树和文件预览，随时了解 Copilot 正在查看的内容
 - 🔐 **权限控制** -- 逐项审批、拒绝或自动允许工具使用，可选择不同的权限模式
-- 🎭 **多种交互模式** -- 在 *Code*、*Plan* 和 *Ask* 模式之间切换，控制 Claude 在每个会话中的行为方式
-- 🤖 **模型切换** -- 在对话中随时切换 Claude 模型（Opus、Sonnet、Haiku）
+- 🎭 **多种交互模式** -- 在 *Code*、*Plan* 和 *Ask* 模式之间切换，控制 Copilot 在每个会话中的行为方式
+- 🤖 **模型切换** -- 在对话中随时切换 Copilot 模型（GPT-4、GPT-3.5）
 - 🔌 **MCP 服务器管理** -- 直接在扩展页面添加、配置和移除 Model Context Protocol 服务器。支持 `stdio`、`sse` 和 `http` 传输类型
 - ⚡ **自定义技能** -- 定义可复用的提示词技能（全局或项目级别），在聊天中作为斜杠命令调用
-- ⚙️ **设置编辑器** -- 可视化和 JSON 编辑器管理 `~/.claude/settings.json`，包括权限和环境变量配置
+- ⚙️ **设置编辑器** -- 可视化和 JSON 编辑器管理 Copilot 设置，包括权限和环境变量配置
 - 📊 **Token 用量追踪** -- 每次助手回复后查看输入/输出 Token 数量和预估费用
 - 🌓 **深色/浅色主题** -- 导航栏一键切换主题
 - 💻 **斜杠命令** -- 内置 `/help`、`/clear`、`/cost`、`/compact`、`/doctor`、`/review` 等命令
@@ -38,10 +38,10 @@
 | 要求 | 最低版本 |
 |------|---------|
 | **Node.js** | 18+ |
-| **Claude Code CLI** | 已安装并完成认证（`claude --version` 可正常运行） |
+| **GitHub Copilot CLI** | 已安装并完成认证（`copilot --version` 可正常运行） |
 | **npm** | 9+（Node 18 自带） |
 
-> **注意**：CodePilot 底层调用 Claude Code Agent SDK。请确保 `claude` 命令在 `PATH` 中可用，并且已完成认证（`claude login`）。
+> **注意**：CodePilot 底层调用 GitHub Copilot SDK。请确保 `copilot` 命令在 `PATH` 中可用，并且已完成认证。
 
 ---
 
@@ -133,7 +133,7 @@ Windows SmartScreen 会阻止安装程序或可执行文件。
 | UI 组件 | [Radix UI](https://www.radix-ui.com/) + [shadcn/ui](https://ui.shadcn.com/) |
 | 样式 | [Tailwind CSS 4](https://tailwindcss.com/) |
 | 动画 | [Motion](https://motion.dev/)（Framer Motion） |
-| AI 集成 | [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) |
+| AI 集成 | [GitHub Copilot SDK](https://www.npmjs.com/package/@github/copilot-sdk) |
 | 数据库 | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3)（嵌入式，用户独立） |
 | Markdown | react-markdown + remark-gfm + rehype-raw + [Shiki](https://shiki.style/) |
 | 流式传输 | [Vercel AI SDK](https://sdk.vercel.ai/) + Server-Sent Events |

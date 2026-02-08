@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { findClaudeBinary, getClaudeVersion } from '@/lib/platform';
+import { findCopilotBinary, getCopilotVersion } from '@/lib/platform';
 
 export async function GET() {
   try {
-    const claudePath = findClaudeBinary();
-    if (!claudePath) {
+    const copilotPath = findCopilotBinary();
+    if (!copilotPath) {
       return NextResponse.json({ connected: false, version: null });
     }
-    const version = await getClaudeVersion(claudePath);
+    const version = await getCopilotVersion(copilotPath);
     return NextResponse.json({ connected: !!version, version });
   } catch {
     return NextResponse.json({ connected: false, version: null });
