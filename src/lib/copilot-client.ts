@@ -49,14 +49,14 @@ export function streamCopilot(options: CopilotStreamOptions): ReadableStream<str
         sdkEnv.PATH = getExpandedPath();
 
         // GitHub Copilot uses GITHUB_TOKEN for authentication
-        const appToken = getSetting('github_token') || getSetting('anthropic_auth_token'); // fallback for migration
+        const githubToken = getSetting('github_token') || getSetting('anthropic_auth_token'); // fallback for migration
         
         // Find copilot binary for packaged app where PATH is limited
         const copilotPath = findCopilotPath();
         
         // Initialize Copilot client
         const client = new CopilotClient({
-          githubToken: appToken || undefined,
+          githubToken: githubToken || undefined,
           cliPath: copilotPath,
           env: sdkEnv,
           cwd: workingDirectory,
