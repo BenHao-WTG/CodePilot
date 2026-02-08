@@ -18,10 +18,10 @@ You need to install and authenticate with the GitHub Copilot CLI:
 
 ```bash
 # Install the Copilot CLI
-npm install -g @github/copilot-cli
+npm install -g @github/copilot
 
-# Authenticate with GitHub
-copilot auth
+# Authenticate with GitHub - run copilot and use /login command
+copilot
 
 # Verify installation
 copilot --version

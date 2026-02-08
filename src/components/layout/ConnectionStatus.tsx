@@ -104,15 +104,16 @@ export function ConnectionStatus() {
               <div>
                 <h4 className="font-medium mb-1.5">1. Install GitHub Copilot CLI</h4>
                 <code className="block rounded-md bg-muted px-3 py-2 text-xs">
-                  npm install -g @github/copilot-cli
+                  npm install -g @github/copilot
                 </code>
               </div>
 
               <div>
                 <h4 className="font-medium mb-1.5">2. Authenticate</h4>
                 <code className="block rounded-md bg-muted px-3 py-2 text-xs">
-                  copilot auth
+                  copilot
                 </code>
+                <p className="text-xs text-muted-foreground mt-1">Then run /login in the Copilot CLI</p>
               </div>
 
               <div>

@@ -49,7 +49,9 @@ export function streamCopilot(options: CopilotStreamOptions): ReadableStream<str
         sdkEnv.PATH = getExpandedPath();
 
         // GitHub Copilot uses GITHUB_TOKEN for authentication
-        const githubToken = getSetting('github_token') || getSetting('anthropic_auth_token'); // fallback for migration
+        // Note: Fallback to 'anthropic_auth_token' is for migration convenience only.
+        // GitHub tokens and Anthropic tokens are different - users should update their settings.
+        const githubToken = getSetting('github_token') || getSetting('anthropic_auth_token');
         
         // Find copilot binary for packaged app where PATH is limited
         const copilotPath = findCopilotPath();
@@ -137,15 +139,15 @@ export function streamCopilot(options: CopilotStreamOptions): ReadableStream<str
           }
         });
 
-        // Handle abort
+        // Send the message (event handlers are already registered above)
+        await session.send({ prompt });
+
+        // Handle abort (registered after send to ensure message is sent)
         abortController?.signal.addEventListener('abort', () => {
           session.destroy().catch(() => {});
           client.stop().catch(() => {});
           controller.close();
         });
-
-        // Send the message
-        await session.send({ prompt });
 
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
