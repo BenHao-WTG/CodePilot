@@ -30,18 +30,18 @@ interface SettingsData {
   [key: string]: unknown;
 }
 
-// Structured known fields from ~/.claude/settings.json
+// Structured known fields from ~/.copilot/settings.json
 const KNOWN_FIELDS = [
   {
     key: "permissions",
     label: "Permissions",
-    description: "Configure permission settings for Claude CLI",
+    description: "Configure permission settings for GitHub Copilot CLI",
     type: "object" as const,
   },
   {
     key: "env",
     label: "Environment Variables",
-    description: "Environment variables passed to Claude",
+    description: "Environment variables passed to GitHub Copilot",
     type: "object" as const,
   },
 ] as const;
@@ -63,7 +63,6 @@ export default function SettingsPage() {
 // --- API Configuration Section (CodePilot app settings, stored in SQLite) ---
 function ApiConfigSection() {
   const [token, setToken] = useState("");
-  const [baseUrl, setBaseUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
@@ -73,8 +72,7 @@ function ApiConfigSection() {
       .then((r) => r.json())
       .then((data) => {
         const s = data.settings || {};
-        setToken(s.anthropic_auth_token || "");
-        setBaseUrl(s.anthropic_base_url || "");
+        setToken(s.github_token || s.anthropic_auth_token || "");
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -89,8 +87,7 @@ function ApiConfigSection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           settings: {
-            anthropic_auth_token: token,
-            anthropic_base_url: baseUrl,
+            github_token: token,
           },
         }),
       });
@@ -112,37 +109,37 @@ function ApiConfigSection() {
   return (
     <div className="rounded-lg border border-border/50 p-4 space-y-4">
       <div>
-        <Label className="text-sm font-medium">API Configuration</Label>
+        <Label className="text-sm font-medium">GitHub Copilot Authentication</Label>
         <p className="text-xs text-muted-foreground">
-          Optional. Configure a custom Anthropic-compatible API for Claude Code.
-          Leave empty to use the default authentication (claude login / shell environment).
+          Optional. Configure a GitHub token for Copilot API access.
+          Leave empty to use the default authentication from Copilot CLI (copilot login).
         </p>
       </div>
       <div className="space-y-3">
         <div>
-          <Label htmlFor="api-base-url" className="text-xs text-muted-foreground">
-            API Base URL
+          <Label htmlFor="github-token" className="text-xs text-muted-foreground">
+            GitHub Token (GITHUB_TOKEN)
           </Label>
           <Input
-            id="api-base-url"
-            placeholder="https://api.anthropic.com"
-            value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
-            className="mt-1 font-mono text-sm"
-          />
-        </div>
-        <div>
-          <Label htmlFor="api-token" className="text-xs text-muted-foreground">
-            API Token (ANTHROPIC_AUTH_TOKEN)
-          </Label>
-          <Input
-            id="api-token"
+            id="github-token"
             type="password"
-            placeholder="sk-ant-..."
+            placeholder="ghp_..."
             value={token}
             onChange={(e) => setToken(e.target.value)}
             className="mt-1 font-mono text-sm"
           />
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Generate a token at{" "}
+            <a
+              href="https://github.com/settings/tokens"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              github.com/settings/tokens
+            </a>
+            {" "}with Copilot access permissions.
+          </p>
         </div>
       </div>
       <div className="flex items-center gap-3">
@@ -152,7 +149,7 @@ function ApiConfigSection() {
           ) : (
             <HugeiconsIcon icon={FloppyDiskIcon} className="h-4 w-4" />
           )}
-          {saving ? "Saving..." : "Save API Config"}
+          {saving ? "Saving..." : "Save GitHub Token"}
         </Button>
         {status === "saved" && (
           <span className="text-sm text-green-600 dark:text-green-400">Saved</span>
@@ -274,7 +271,7 @@ function SettingsPageInner() {
       <div className="border-b border-border/50 px-6 pt-4 pb-4">
         <h1 className="text-xl font-semibold">Settings</h1>
         <p className="text-sm text-muted-foreground">
-          Manage CodePilot and Claude CLI settings
+          Manage CodePilot and GitHub Copilot CLI settings
         </p>
       </div>
 
@@ -476,7 +473,7 @@ function SettingsPageInner() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Save</AlertDialogTitle>
             <AlertDialogDescription>
-              This will overwrite your current ~/.claude/settings.json file. Are
+              This will overwrite your current ~/.copilot/settings.json file. Are
               you sure you want to continue?
             </AlertDialogDescription>
           </AlertDialogHeader>
