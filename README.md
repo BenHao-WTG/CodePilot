@@ -1,7 +1,7 @@
 <img src="docs/icon-readme.png" width="32" height="32" alt="CodePilot" style="vertical-align: middle; margin-right: 8px;" /> CodePilot
 ===
 
-**A native desktop GUI for Claude Code** -- chat, code, and manage projects through a polished visual interface instead of the terminal.
+**A native desktop GUI for GitHub Copilot** -- chat, code, and manage projects through a polished visual interface instead of the terminal.
 
 [![GitHub release](https://img.shields.io/github/v/release/op7418/CodePilot)](https://github.com/op7418/CodePilot/releases)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)](https://github.com/op7418/CodePilot/releases)
@@ -13,15 +13,15 @@
 
 ## Features
 
-- **💬 Conversational coding** -- Stream responses from Claude in real time with full Markdown rendering, syntax-highlighted code blocks, and tool-call visualization.
+- **💬 Conversational coding** -- Stream responses from GitHub Copilot in real time with full Markdown rendering, syntax-highlighted code blocks, and tool-call visualization.
 - **📂 Session management** -- Create, rename, archive, and resume chat sessions. Conversations are persisted locally in SQLite so nothing is lost between restarts.
-- **🎯 Project-aware context** -- Pick a working directory per session. The right panel shows a live file tree and file previews so you always know what Claude is looking at.
+- **🎯 Project-aware context** -- Pick a working directory per session. The right panel shows a live file tree and file previews so you always know what Copilot is looking at.
 - **🔒 Permission controls** -- Approve, deny, or auto-allow tool use on a per-action basis. Choose between permission modes to match your comfort level.
-- **🎭 Multiple interaction modes** -- Switch between *Code*, *Plan*, and *Ask* modes to control how Claude behaves in each session.
-- **🤖 Model selector** -- Switch between Claude models (Opus, Sonnet, Haiku) mid-conversation.
+- **🎭 Multiple interaction modes** -- Switch between *Code*, *Plan*, and *Ask* modes to control how Copilot behaves in each session.
+- **🤖 Model selector** -- Switch between Copilot models (GPT-4, GPT-3.5) mid-conversation.
 - **🔌 MCP server management** -- Add, configure, and remove Model Context Protocol servers directly from the Extensions page. Supports `stdio`, `sse`, and `http` transport types.
 - **⚡ Custom skills** -- Define reusable prompt-based skills (global or per-project) that can be invoked as slash commands during chat.
-- **⚙️ Settings editor** -- Visual and JSON editors for your `~/.claude/settings.json`, including permissions and environment variables.
+- **⚙️ Settings editor** -- Visual and JSON editors for your Copilot settings, including permissions and environment variables.
 - **📊 Token usage tracking** -- See input/output token counts and estimated cost after every assistant response.
 - **🌗 Dark / Light theme** -- One-click theme toggle in the navigation rail.
 - **⌨️ Slash commands** -- Built-in commands like `/help`, `/clear`, `/cost`, `/compact`, `/doctor`, `/review`, and more.
@@ -37,12 +37,12 @@
 
 ## Prerequisites
 
-> **Important**: CodePilot calls the Claude Code Agent SDK under the hood. Make sure `claude` is available on your `PATH` and that you have authenticated (`claude login`) before launching the app.
+> **Important**: CodePilot uses the GitHub Copilot SDK under the hood. Make sure the `copilot` CLI is available on your `PATH` and that you have authenticated before launching the app.
 
 | Requirement | Minimum version |
 |---|---|
 | **Node.js** | 18+ |
-| **Claude Code CLI** | Installed and authenticated (`claude --version` should work) |
+| **GitHub Copilot CLI** | Installed and authenticated (`copilot --version` should work) |
 | **npm** | 9+ (ships with Node 18) |
 
 ---
@@ -135,7 +135,7 @@ Windows SmartScreen will block the installer or executable.
 | UI components | [Radix UI](https://www.radix-ui.com/) + [shadcn/ui](https://ui.shadcn.com/) |
 | Styling | [Tailwind CSS 4](https://tailwindcss.com/) |
 | Animation | [Motion](https://motion.dev/) (Framer Motion) |
-| AI integration | [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) |
+| AI integration | [GitHub Copilot SDK](https://www.npmjs.com/package/@github/copilot-sdk) |
 | Database | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) (embedded, per-user) |
 | Markdown | react-markdown + remark-gfm + rehype-raw + [Shiki](https://shiki.style/) |
 | Streaming | [Vercel AI SDK](https://sdk.vercel.ai/) helpers + Server-Sent Events |
@@ -174,7 +174,7 @@ codepilot/
 │   │   └── ui/              # Radix-based primitives (button, dialog, tabs, ...)
 │   ├── hooks/               # Custom React hooks (usePanel, ...)
 │   ├── lib/                 # Core logic
-│   │   ├── claude-client.ts # Agent SDK streaming wrapper
+│   │   ├── copilot-client.ts # Copilot SDK streaming wrapper
 │   │   ├── db.ts            # SQLite schema, migrations, CRUD
 │   │   ├── files.ts         # File system helpers
 │   │   ├── permission-registry.ts  # Permission request/response bridge

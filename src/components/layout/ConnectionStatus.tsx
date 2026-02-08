@@ -12,20 +12,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-interface ClaudeStatus {
+interface CopilotStatus {
   connected: boolean;
   version: string | null;
 }
 
 export function ConnectionStatus() {
-  const [status, setStatus] = useState<ClaudeStatus | null>(null);
+  const [status, setStatus] = useState<CopilotStatus | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const checkStatus = useCallback(async () => {
     try {
-      const res = await fetch("/api/claude-status");
+      const res = await fetch("/api/copilot-status");
       if (res.ok) {
-        const data: ClaudeStatus = await res.json();
+        const data: CopilotStatus = await res.json();
         setStatus(data);
       }
     } catch {
@@ -75,12 +75,12 @@ export function ConnectionStatus() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {connected ? "Claude Code Connected" : "Claude Code Not Connected"}
+              {connected ? "GitHub Copilot Connected" : "GitHub Copilot Not Connected"}
             </DialogTitle>
             <DialogDescription>
               {connected
-                ? `Claude Code CLI v${status?.version} is running and ready.`
-                : "Claude Code CLI is required to use this application."}
+                ? `GitHub Copilot CLI v${status?.version} is running and ready.`
+                : "GitHub Copilot CLI is required to use this application."}
             </DialogDescription>
           </DialogHeader>
 
@@ -102,23 +102,23 @@ export function ConnectionStatus() {
               </div>
 
               <div>
-                <h4 className="font-medium mb-1.5">1. Install Claude Code</h4>
+                <h4 className="font-medium mb-1.5">1. Install GitHub Copilot CLI</h4>
                 <code className="block rounded-md bg-muted px-3 py-2 text-xs">
-                  npm install -g @anthropic-ai/claude-code
+                  npm install -g @github/copilot-cli
                 </code>
               </div>
 
               <div>
                 <h4 className="font-medium mb-1.5">2. Authenticate</h4>
                 <code className="block rounded-md bg-muted px-3 py-2 text-xs">
-                  claude login
+                  copilot auth
                 </code>
               </div>
 
               <div>
                 <h4 className="font-medium mb-1.5">3. Verify Installation</h4>
                 <code className="block rounded-md bg-muted px-3 py-2 text-xs">
-                  claude --version
+                  copilot --version
                 </code>
               </div>
             </div>

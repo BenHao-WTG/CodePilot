@@ -304,6 +304,18 @@ export interface PermissionResponseRequest {
   };
 }
 
+// Permission result types (SDK-agnostic)
+export interface PermissionUpdate {
+  type: string;
+  rules?: Array<{ toolName: string; ruleContent?: string }>;
+  behavior?: string;
+  destination?: string;
+}
+
+export type PermissionResult = 
+  | { behavior: 'allow'; updatedInput?: Record<string, unknown>; updatedPermissions?: PermissionUpdate[] }
+  | { behavior: 'deny'; message?: string };
+
 // ==========================================
 // Plugin / MCP Types
 // ==========================================
@@ -348,10 +360,10 @@ export const SETTING_KEYS = {
 } as const;
 
 // ==========================================
-// Claude Client Types
+// Copilot Client Types
 // ==========================================
 
-export interface ClaudeStreamOptions {
+export interface CopilotStreamOptions {
   prompt: string;
   sessionId: string;
   sdkSessionId?: string; // SDK session ID for resuming conversations
@@ -362,3 +374,6 @@ export interface ClaudeStreamOptions {
   abortController?: AbortController;
   permissionMode?: string;
 }
+
+// Backward compatibility alias
+export type ClaudeStreamOptions = CopilotStreamOptions;
