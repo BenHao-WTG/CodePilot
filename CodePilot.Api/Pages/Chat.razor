@@ -1,42 +1,408 @@
 @page "/chat"
+@page "/chat/{SessionId}"
+@using Microsoft.EntityFrameworkCore
+@using CodePilot.Api.Data
+@using CodePilot.Api.Services
+@inject IDbContextFactory<CodePilotDbContext> DbFactory
+@inject ICopilotService CopilotService
 @inject NavigationManager Navigation
 
-<PageTitle>CodePilot - Chat</PageTitle>
+<PageTitle>CodePilot - @(string.IsNullOrEmpty(sessionTitle) ? "New Chat" : sessionTitle)</PageTitle>
 
-<div class="chat-container">
-    <div class="chat-content">
-        <h1>Chat</h1>
-        <p>Chat functionality will be implemented here.</p>
-        <p>This is a placeholder page during the migration to Blazor.</p>
-        <button class="btn btn-outline" @onclick="GoHome">
-            ← Back to Home
-        </button>
-    </div>
+<div class="chat-page">
+    @if (SessionId == null)
+    {
+        <!-- New Chat -->
+        <div class="chat-container">
+            <div class="messages-container">
+                @if (!messages.Any() && !isStreaming)
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">🤖</div>
+                        <h2>GitHub Copilot Chat</h2>
+                        <p>Start a conversation with GitHub Copilot. Ask questions, get help with code, or explore ideas.</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var msg in messages)
+                    {
+                        <div class="message @msg.Role">
+                            <div class="message-role">@(msg.Role == "user" ? "You" : "Copilot")</div>
+                            <div class="message-content">@((MarkupString)ConvertMarkdown(msg.Content))</div>
+                            @if (!string.IsNullOrEmpty(msg.TokenUsage))
+                            {
+                                <div class="message-meta">Tokens: @msg.TokenUsage</div>
+                            }
+                        </div>
+                    }
+                    
+                    @if (isStreaming && !string.IsNullOrEmpty(streamingContent))
+                    {
+                        <div class="message assistant streaming">
+                            <div class="message-role">Copilot</div>
+                            <div class="message-content">@((MarkupString)ConvertMarkdown(streamingContent))</div>
+                            @if (!string.IsNullOrEmpty(statusText))
+                            {
+                                <div class="status-text">@statusText</div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+            
+            <div class="input-container">
+                <textarea @bind="currentInput" @onkeydown="HandleKeyDown" 
+                          placeholder="Ask GitHub Copilot anything..." 
+                          rows="3" 
+                          disabled="@isStreaming"></textarea>
+                <div class="input-actions">
+                    @if (isStreaming)
+                    {
+                        <button @onclick="StopStreaming" class="btn btn-secondary">Stop</button>
+                    }
+                    else
+                    {
+                        <button @onclick="SendMessage" class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(currentInput)">
+                            Send
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Existing Session -->
+        @if (loading)
+        {
+            <div class="loading">Loading session...</div>
+        }
+        else if (!string.IsNullOrEmpty(error))
+        {
+            <div class="error">
+                <p>@error</p>
+                <a href="/chat">Start a new chat</a>
+            </div>
+        }
+        else
+        {
+            <div class="chat-container">
+                @if (!string.IsNullOrEmpty(sessionTitle))
+                {
+                    <div class="session-header">
+                        <h2>@sessionTitle</h2>
+                    </div>
+                }
+                
+                <div class="messages-container">
+                    @foreach (var msg in messages)
+                    {
+                        <div class="message @msg.Role">
+                            <div class="message-role">@(msg.Role == "user" ? "You" : "Copilot")</div>
+                            <div class="message-content">@((MarkupString)ConvertMarkdown(msg.Content))</div>
+                            @if (!string.IsNullOrEmpty(msg.TokenUsage))
+                            {
+                                <div class="message-meta">Tokens: @msg.TokenUsage</div>
+                            }
+                        </div>
+                    }
+                    
+                    @if (isStreaming && !string.IsNullOrEmpty(streamingContent))
+                    {
+                        <div class="message assistant streaming">
+                            <div class="message-role">Copilot</div>
+                            <div class="message-content">@((MarkupString)ConvertMarkdown(streamingContent))</div>
+                            @if (!string.IsNullOrEmpty(statusText))
+                            {
+                                <div class="status-text">@statusText</div>
+                            }
+                        </div>
+                    }
+                </div>
+                
+                <div class="input-container">
+                    <textarea @bind="currentInput" @onkeydown="HandleKeyDown"
+                              placeholder="Continue the conversation..." 
+                              rows="3" 
+                              disabled="@isStreaming"></textarea>
+                    <div class="input-actions">
+                        @if (isStreaming)
+                        {
+                            <button @onclick="StopStreaming" class="btn btn-secondary">Stop</button>
+                        }
+                        else
+                        {
+                            <button @onclick="SendMessageToSession" class="btn btn-primary" disabled="@string.IsNullOrWhiteSpace(currentInput)">
+                                Send
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    }
 </div>
 
-<style>
-    .chat-container {
-        padding: 2rem;
-    }
-    
-    .chat-content {
-        max-width: 64rem;
-        margin: 0 auto;
-    }
-    
-    .chat-content h1 {
-        font-size: 2rem;
-        margin-bottom: 1rem;
-    }
-    
-    .chat-content p {
-        margin-bottom: 1rem;
-    }
-</style>
-
 @code {
-    private void GoHome()
+    [Parameter]
+    public string? SessionId { get; set; }
+    
+    private List<Message> messages = new();
+    private string currentInput = "";
+    private bool isStreaming = false;
+    private string streamingContent = "";
+    private string statusText = "";
+    private bool loading = false;
+    private string error = "";
+    private string sessionTitle = "";
+    private CancellationTokenSource? cancellationTokenSource;
+    
+    protected override async Task OnInitializedAsync()
     {
-        Navigation.NavigateTo("/");
+        if (!string.IsNullOrEmpty(SessionId))
+        {
+            await LoadSession();
+        }
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(SessionId))
+        {
+            await LoadSession();
+        }
+    }
+    
+    private async Task LoadSession()
+    {
+        loading = true;
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            
+            // Load session
+            var session = await context.ChatSessions.FindAsync(SessionId);
+            if (session == null)
+            {
+                error = "Session not found";
+                return;
+            }
+            
+            sessionTitle = session.Title ?? "Chat Session";
+            
+            // Load messages
+            messages = await context.Messages
+                .Where(m => m.SessionId == SessionId)
+                .OrderBy(m => m.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            error = $"Error loading session: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+    
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(currentInput) || isStreaming) return;
+        
+        var userMessage = currentInput.Trim();
+        currentInput = "";
+        isStreaming = true;
+        streamingContent = "";
+        statusText = "Creating session...";
+        
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            
+            // Create new session
+            var session = new ChatSession
+            {
+                Id = Guid.NewGuid().ToString(),
+                Title = userMessage.Length > 50 ? userMessage.Substring(0, 50) + "..." : userMessage,
+                Model = "gpt-4",
+                Mode = "code",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            
+            context.ChatSessions.Add(session);
+            await context.SaveChangesAsync();
+            
+            // Add user message to UI
+            var userMsg = new Message
+            {
+                Id = Guid.NewGuid().ToString(),
+                SessionId = session.Id,
+                Role = "user",
+                Content = userMessage,
+                CreatedAt = DateTime.UtcNow
+            };
+            messages.Add(userMsg);
+            context.Messages.Add(userMsg);
+            await context.SaveChangesAsync();
+            StateHasChanged();
+            
+            // Stream response
+            cancellationTokenSource = new CancellationTokenSource();
+            await StreamCopilotResponse(session.Id, userMessage, cancellationTokenSource.Token);
+            
+            // Navigate to session page
+            Navigation.NavigateTo($"/chat/{session.Id}");
+        }
+        catch (Exception ex)
+        {
+            statusText = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isStreaming = false;
+            streamingContent = "";
+            statusText = "";
+            cancellationTokenSource?.Dispose();
+            cancellationTokenSource = null;
+        }
+    }
+    
+    private async Task SendMessageToSession()
+    {
+        if (string.IsNullOrWhiteSpace(currentInput) || isStreaming || string.IsNullOrEmpty(SessionId)) return;
+        
+        var userMessage = currentInput.Trim();
+        currentInput = "";
+        isStreaming = true;
+        streamingContent = "";
+        
+        try
+        {
+            using var context = await DbFactory.CreateDbContextAsync();
+            
+            // Add user message
+            var userMsg = new Message
+            {
+                Id = Guid.NewGuid().ToString(),
+                SessionId = SessionId,
+                Role = "user",
+                Content = userMessage,
+                CreatedAt = DateTime.UtcNow
+            };
+            messages.Add(userMsg);
+            context.Messages.Add(userMsg);
+            await context.SaveChangesAsync();
+            StateHasChanged();
+            
+            // Stream response
+            cancellationTokenSource = new CancellationTokenSource();
+            await StreamCopilotResponse(SessionId, userMessage, cancellationTokenSource.Token);
+        }
+        catch (Exception ex)
+        {
+            statusText = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isStreaming = false;
+            streamingContent = "";
+            statusText = "";
+            cancellationTokenSource?.Dispose();
+            cancellationTokenSource = null;
+        }
+    }
+    
+    private async Task StreamCopilotResponse(string sessionId, string prompt, CancellationToken cancellationToken)
+    {
+        try
+        {
+            statusText = "Connecting to GitHub Copilot...";
+            StateHasChanged();
+            
+            var responseBuilder = new System.Text.StringBuilder();
+            
+            // TODO: Use real Copilot service streaming
+            // For now, simulate with a simple response
+            await Task.Delay(500, cancellationToken);
+            
+            statusText = "Generating response...";
+            StateHasChanged();
+            
+            // Simulate streaming chunks
+            var response = "I'm a Blazor-based chat interface! The GitHub Copilot SDK integration is in progress. " +
+                          "This demonstrates the migration from Next.js to Blazor Server. " +
+                          "Full streaming support will be implemented using SignalR.";
+            
+            foreach (var chunk in response.Split(' '))
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+                
+                responseBuilder.Append(chunk + " ");
+                streamingContent = responseBuilder.ToString();
+                StateHasChanged();
+                await Task.Delay(50, cancellationToken);
+            }
+            
+            statusText = "";
+            
+            // Save assistant message
+            if (!cancellationToken.IsCancellationRequested && responseBuilder.Length > 0)
+            {
+                using var context = await DbFactory.CreateDbContextAsync();
+                var assistantMsg = new Message
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    SessionId = sessionId,
+                    Role = "assistant",
+                    Content = responseBuilder.ToString().Trim(),
+                    CreatedAt = DateTime.UtcNow
+                };
+                messages.Add(assistantMsg);
+                context.Messages.Add(assistantMsg);
+                await context.SaveChangesAsync();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            statusText = "Stopped";
+        }
+        catch (Exception ex)
+        {
+            statusText = $"Error: {ex.Message}";
+        }
+    }
+    
+    private void StopStreaming()
+    {
+        cancellationTokenSource?.Cancel();
+    }
+    
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            if (SessionId == null)
+            {
+                await SendMessage();
+            }
+            else
+            {
+                await SendMessageToSession();
+            }
+        }
+    }
+    
+    private string ConvertMarkdown(string content)
+    {
+        var html = System.Web.HttpUtility.HtmlEncode(content);
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"```(.*?)```", "<pre><code>$1</code></pre>", 
+            System.Text.RegularExpressions.RegexOptions.Singleline);
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"`(.+?)`", "<code>$1</code>");
+        html = html.Replace("\n", "<br/>");
+        return html;
     }
 }
