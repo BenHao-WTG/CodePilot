@@ -1,21 +1,74 @@
 @using Microsoft.AspNetCore.Components.Routing
 @inherits LayoutComponentBase
 
-<div class="app-container">
-    <header class="app-header">
-        <h1 class="app-title">CodePilot</h1>
-        <nav class="app-nav">
-            <NavLink href="/" Match="NavLinkMatch.All">Home</NavLink>
-            <NavLink href="/chat">Chat</NavLink>
-            <NavLink href="/settings">Settings</NavLink>
-        </nav>
+<div class="flex flex-col h-screen">
+    <!-- Header -->
+    <header class="border-b px-6 py-4">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-6">
+                <NavLink href="/" class="text-xl font-bold">
+                    CodePilot
+                </NavLink>
+                <nav class="flex gap-4">
+                    <NavLink href="/" class="nav-link" Match="NavLinkMatch.All">
+                        Home
+                    </NavLink>
+                    <NavLink href="/chat" class="nav-link">
+                        Chat
+                    </NavLink>
+                    <NavLink href="/settings" class="nav-link">
+                        Settings
+                    </NavLink>
+                    <NavLink href="/plugins" class="nav-link">
+                        Plugins
+                    </NavLink>
+                    <NavLink href="/extensions" class="nav-link">
+                        Extensions
+                    </NavLink>
+                </nav>
+            </div>
+            <div class="flex items-center gap-2">
+                <!-- Theme toggle could go here -->
+            </div>
+        </div>
     </header>
-    
-    <main class="app-main">
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-auto">
         @Body
     </main>
 </div>
 
-@code {
-    // Main layout code
-}
+<style>
+    .nav-link {
+        padding: 0.5rem 0.75rem;
+        border-radius: calc(var(--radius) - 2px);
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--foreground);
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .nav-link:hover {
+        background-color: var(--accent);
+        color: var(--accent-foreground);
+    }
+
+    .nav-link.active {
+        background-color: var(--primary);
+        color: var(--primary-foreground);
+    }
+
+    .flex-col {
+        flex-direction: column;
+    }
+
+    .h-screen {
+        height: 100vh;
+    }
+
+    .overflow-auto {
+        overflow: auto;
+    }
+</style>

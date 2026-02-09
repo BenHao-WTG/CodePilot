@@ -1,209 +1,49 @@
 @page "/plugins"
-@using Microsoft.EntityFrameworkCore
-@using CodePilot.Api.Data
-@inject IDbContextFactory<CodePilotDbContext> DbFactory
 
-<div class="plugins-page">
-    <div class="page-header">
-        <h1>Plugins & MCP Servers</h1>
-        <p>Manage Model Context Protocol (MCP) servers and plugins to extend Copilot's capabilities.</p>
-    </div>
-    
-    <div class="content-grid">
-        <!-- MCP Servers Section -->
-        <div class="section">
-            <div class="section-header">
-                <h2>MCP Servers</h2>
-                <button @onclick="() => showAddMcp = true" class="btn btn-primary btn-sm">
-                    + Add Server
-                </button>
-            </div>
-            
-            @if (loading)
-            {
-                <div class="loading">Loading plugins...</div>
-            }
-            else if (mcpServers.Any())
-            {
-                <div class="plugin-list">
-                    @foreach (var server in mcpServers)
-                    {
-                        <div class="plugin-card">
-                            <div class="plugin-header">
-                                <h3>@server.Name</h3>
-                                <span class="badge @(server.Enabled ? "badge-success" : "badge-secondary")">
-                                    @(server.Enabled ? "Enabled" : "Disabled")
-                                </span>
-                            </div>
-                            <p class="plugin-description">@server.Description</p>
-                            <div class="plugin-actions">
-                                <button @onclick="() => TogglePlugin(server)" class="btn btn-sm">
-                                    @(server.Enabled ? "Disable" : "Enable")
-                                </button>
-                                <button @onclick="() => RemovePlugin(server)" class="btn btn-sm btn-danger">
-                                    Remove
-                                </button>
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="empty-message">
-                    <p>No MCP servers configured.</p>
-                    <p class="text-muted">Add a server to extend Copilot's capabilities with external tools and data sources.</p>
-                </div>
-            }
-        </div>
+<div class="p-8">
+    <div class="max-w-4xl mx-auto space-y-8">
         
-        <!-- Skills/Commands Section -->
-        <div class="section">
-            <div class="section-header">
-                <h2>Skills & Commands</h2>
-                <button @onclick="NavigateToSkills" class="btn btn-primary btn-sm">
-                    Manage Skills
+        <!-- Header -->
+        <div>
+            <h1 class="text-3xl font-bold">Plugins</h1>
+            <p class="text-muted mt-2">Manage MCP servers and skills</p>
+        </div>
+
+        <!-- MCP Servers -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">MCP Servers</div>
+                <div class="card-description">
+                    Model Context Protocol servers extend Copilot's capabilities
+                </div>
+            </div>
+            <div class="card-content space-y-4">
+                <div class="text-sm text-muted text-center py-8">
+                    No MCP servers configured yet
+                </div>
+                <button class="btn btn-outline w-full">
+                    + Add MCP Server
                 </button>
             </div>
-            
-            <div class="info-box">
-                <p>Skills are custom commands you can create to automate common tasks.</p>
-                <ul>
-                    <li>Define reusable prompts and workflows</li>
-                    <li>Access via slash commands like <code>/myskill</code></li>
-                    <li>Share skills with your team</li>
-                </ul>
+        </div>
+
+        <!-- Skills -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Skills</div>
+                <div class="card-description">
+                    Custom commands and workflows
+                </div>
+            </div>
+            <div class="card-content space-y-4">
+                <div class="text-sm text-muted text-center py-8">
+                    No skills configured yet
+                </div>
+                <button class="btn btn-outline w-full">
+                    + Create Skill
+                </button>
             </div>
         </div>
+
     </div>
-    
-    <!-- Add MCP Server Dialog -->
-    @if (showAddMcp)
-    {
-        <div class="dialog-overlay" @onclick="() => showAddMcp = false">
-            <div class="dialog" @onclick:stopPropagation="true">
-                <div class="dialog-header">
-                    <h2>Add MCP Server</h2>
-                    <button @onclick="() => showAddMcp = false" class="close-btn">×</button>
-                </div>
-                <div class="dialog-content">
-                    <div class="form-group">
-                        <label>Server Name</label>
-                        <input type="text" @bind="newMcpName" placeholder="my-mcp-server" class="form-control" />
-                    </div>
-                    <div class="form-group">
-                        <label>Description</label>
-                        <input type="text" @bind="newMcpDescription" placeholder="Description of the server" class="form-control" />
-                    </div>
-                    <div class="form-group">
-                        <label>Command</label>
-                        <input type="text" @bind="newMcpCommand" placeholder="npx @@modelcontextprotocol/server-..." class="form-control" />
-                    </div>
-                </div>
-                <div class="dialog-footer">
-                    <button @onclick="() => showAddMcp = false" class="btn btn-secondary">Cancel</button>
-                    <button @onclick="AddMcpServer" class="btn btn-primary">Add Server</button>
-                </div>
-            </div>
-        </div>
-    }
 </div>
-
-@code {
-    private List<Plugin> mcpServers = new();
-    private bool loading = true;
-    private bool showAddMcp = false;
-    private string newMcpName = "";
-    private string newMcpDescription = "";
-    private string newMcpCommand = "";
-    
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadPlugins();
-    }
-    
-    private async Task LoadPlugins()
-    {
-        loading = true;
-        try
-        {
-            // For now, use placeholder data
-            // In production, load from database or configuration
-            mcpServers = new List<Plugin>
-            {
-                new Plugin 
-                { 
-                    Name = "filesystem", 
-                    Description = "Read and write files in your workspace",
-                    Enabled = true 
-                },
-                new Plugin 
-                { 
-                    Name = "git", 
-                    Description = "Git operations and repository management",
-                    Enabled = true 
-                },
-                new Plugin 
-                { 
-                    Name = "web-search", 
-                    Description = "Search the web for information",
-                    Enabled = false 
-                }
-            };
-        }
-        finally
-        {
-            loading = false;
-        }
-    }
-    
-    private async Task TogglePlugin(Plugin plugin)
-    {
-        plugin.Enabled = !plugin.Enabled;
-        // TODO: Save to configuration
-        StateHasChanged();
-    }
-    
-    private async Task RemovePlugin(Plugin plugin)
-    {
-        mcpServers.Remove(plugin);
-        // TODO: Remove from configuration
-        StateHasChanged();
-    }
-    
-    private async Task AddMcpServer()
-    {
-        if (string.IsNullOrWhiteSpace(newMcpName)) return;
-        
-        var newPlugin = new Plugin
-        {
-            Name = newMcpName,
-            Description = newMcpDescription,
-            Enabled = true
-        };
-        
-        mcpServers.Add(newPlugin);
-        
-        // Reset form
-        newMcpName = "";
-        newMcpDescription = "";
-        newMcpCommand = "";
-        showAddMcp = false;
-        
-        // TODO: Save to configuration
-        StateHasChanged();
-    }
-    
-    private void NavigateToSkills()
-    {
-        // Navigate to skills management page
-        // For now, just close dialog
-    }
-    
-    private class Plugin
-    {
-        public string Name { get; set; } = "";
-        public string Description { get; set; } = "";
-        public bool Enabled { get; set; }
-    }
-}
