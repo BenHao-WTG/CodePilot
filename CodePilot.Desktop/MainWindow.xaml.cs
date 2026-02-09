@@ -31,8 +31,8 @@ namespace CodePilot
                 // Start the API server
                 await _apiServer.StartAsync();
                 
-                // Navigate directly to the chat page
-                webView.Source = new Uri($"http://localhost:{_apiServer.Port}/chat");
+                // Navigate to the home page
+                webView.Source = new Uri($"http://localhost:{_apiServer.Port}");
             }
             catch (Exception ex)
             {
