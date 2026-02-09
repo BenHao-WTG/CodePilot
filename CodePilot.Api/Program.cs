@@ -33,12 +33,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Configure static files for Next.js output
-builder.Services.AddSpaStaticFiles(configuration =>
-{
-    configuration.RootPath = "wwwroot";
-});
-
 var app = builder.Build();
 
 // Ensure database is created
@@ -56,12 +50,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
-app.UseStaticFiles();
 
-if (!string.IsNullOrEmpty(builder.Configuration["SpaStaticFilesRootPath"]))
-{
-    app.UseSpaStaticFiles();
-}
+// Serve static files from wwwroot
+app.UseStaticFiles();
 
 app.UseRouting();
 app.UseAuthorization();
@@ -71,16 +62,11 @@ app.MapControllers();
 // Health check endpoint
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
-// Serve Next.js SPA
-app.UseSpa(spa =>
-{
-    spa.Options.SourcePath = "wwwroot";
-    
-    if (app.Environment.IsDevelopment())
-    {
-        // In development, proxy to Next.js dev server if available
-        spa.UseProxyToSpaDevelopmentServer("http://localhost:3000");
-    }
-});
+// Fallback to index.html for SPA routing
+app.MapFallbackToFile("index.html");
+
+Console.WriteLine($"CodePilot API Server starting...");
+Console.WriteLine($"Database: {dbPath}");
+Console.WriteLine($"Environment: {app.Environment.EnvironmentName}");
 
 app.Run();
