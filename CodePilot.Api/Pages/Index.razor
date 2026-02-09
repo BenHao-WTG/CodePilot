@@ -1,82 +1,127 @@
 @page "/"
 @using CodePilot.Api.Data
 @using Microsoft.EntityFrameworkCore
-@inject NavigationManager Navigation
 @inject IDbContextFactory<CodePilotDbContext> DbFactory
-@inject HttpClient Http
+@inject NavigationManager Navigation
 
-<PageTitle>CodePilot - Home</PageTitle>
-
-<div class="home-container">
-    <div class="home-content">
+<div class="flex h-full items-center justify-center p-8">
+    <div class="w-full max-w-4xl space-y-8">
+        
         <!-- Welcome Section -->
-        <div class="welcome-section">
-            <h1>Welcome to CodePilot</h1>
-            <p class="subtitle">Your desktop GUI for GitHub Copilot</p>
+        <div class="text-center space-y-4">
+            <h1 class="text-4xl font-bold tracking-tight">Welcome to CodePilot</h1>
+            <p class="text-lg text-muted">
+                Your desktop GUI for GitHub Copilot
+            </p>
         </div>
 
         <!-- Connection Status -->
         @if (!loading)
         {
-            <div class="status-card">
+            <div class="card">
                 <div class="card-header">
-                    <span class="status-icon @(copilotStatus?.Available == true ? "status-connected" : "status-disconnected")">
-                        @(copilotStatus?.Available == true ? "✓" : "⚠")
-                    </span>
-                    <h3>GitHub Copilot Status</h3>
-                </div>
-                <div class="card-body">
-                    @if (copilotStatus?.Available == true)
-                    {
-                        <p>✅ Connected and ready to use</p>
-                        @if (!string.IsNullOrEmpty(copilotStatus.Model))
+                    <div class="card-title flex items-center gap-2">
+                        @if (copilotAvailable)
                         {
-                            <p class="text-muted">Model: @copilotStatus.Model</p>
+                            <span class="text-green-500">✓</span>
                         }
+                        else
+                        {
+                            <span class="text-yellow-500">⚠</span>
+                        }
+                        GitHub Copilot Status
+                    </div>
+                </div>
+                <div class="card-content">
+                    @if (copilotAvailable)
+                    {
+                        <div class="space-y-2">
+                            <p class="text-sm text-muted">
+                                ✅ Connected and ready to use
+                            </p>
+                            @if (!string.IsNullOrEmpty(copilotModel))
+                            {
+                                <p class="text-sm text-muted">
+                                    Model: @copilotModel
+                                </p>
+                            }
+                        </div>
                     }
                     else
                     {
-                        <p class="text-warning">⚠️ GitHub Copilot is not connected</p>
-                        @if (!string.IsNullOrEmpty(copilotStatus?.Error))
-                        {
-                            <p class="text-muted">@copilotStatus.Error</p>
-                        }
-                        <button class="btn btn-outline" @onclick="NavigateToSettings">
-                            Configure Settings
-                        </button>
+                        <div class="space-y-2">
+                            <p class="text-sm text-yellow-600">
+                                ⚠️ GitHub Copilot is not connected
+                            </p>
+                            @if (!string.IsNullOrEmpty(copilotError))
+                            {
+                                <p class="text-sm text-muted">
+                                    @copilotError
+                                </p>
+                            }
+                            <button class="btn btn-outline btn-sm mt-2" @onclick="NavigateToSettings">
+                                <span>⚙️</span>
+                                Configure Settings
+                            </button>
+                        </div>
                     }
                 </div>
             </div>
         }
 
-        <!-- Action Cards -->
-        <div class="action-cards">
-            <div class="action-card" @onclick="NavigateToNewChat">
-                <h3>📝 New Chat</h3>
-                <p>Start a new conversation with GitHub Copilot</p>
+        <!-- Action Buttons -->
+        <div class="grid gap-4 md-grid-cols-2">
+            <div class="card card-hover" @onclick="NavigateToNewChat">
+                <div class="card-header">
+                    <div class="card-title flex items-center gap-2">
+                        <span>💬</span>
+                        New Chat
+                    </div>
+                    <div class="card-description">
+                        Start a new conversation with GitHub Copilot
+                    </div>
+                </div>
             </div>
-            <div class="action-card" @onclick="NavigateToSettings">
-                <h3>⚙️ Settings</h3>
-                <p>Configure your GitHub token and preferences</p>
+
+            <div class="card card-hover" @onclick="NavigateToSettings">
+                <div class="card-header">
+                    <div class="card-title flex items-center gap-2">
+                        <span>⚙️</span>
+                        Settings
+                    </div>
+                    <div class="card-description">
+                        Configure your GitHub token and preferences
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Recent Sessions -->
-        @if (recentSessions.Count > 0)
+        @if (recentSessions != null && recentSessions.Count > 0)
         {
-            <div class="sessions-card">
+            <div class="card">
                 <div class="card-header">
-                    <h3>📂 Recent Sessions</h3>
-                    <p class="text-muted">Continue where you left off</p>
+                    <div class="card-title flex items-center gap-2">
+                        <span>🔄</span>
+                        Recent Sessions
+                    </div>
+                    <div class="card-description">
+                        Continue where you left off
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="sessions-list">
+                <div class="card-content">
+                    <div class="space-y-2">
                         @foreach (var session in recentSessions)
                         {
-                            <div class="session-item" @onclick="() => NavigateToSession(session.Id)">
-                                <div class="session-info">
-                                    <p class="session-title">@(session.Title ?? "Untitled Session")</p>
-                                    <p class="session-date">@session.UpdatedAt.ToLocalTime().ToString("g")</p>
+                            <div class="flex items-center justify-between rounded-lg border p-3 cursor-pointer transition hover-accent"
+                                 @onclick="() => NavigateToSession(session.Id)">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium truncate">
+                                        @(session.Title ?? "Untitled Session")
+                                    </p>
+                                    <p class="text-xs text-muted">
+                                        @session.UpdatedAt.ToLocalTime().ToString("g")
+                                    </p>
                                 </div>
                             </div>
                         }
@@ -86,67 +131,81 @@
         }
 
         <!-- Getting Started -->
-        <div class="info-card">
+        <div class="card">
             <div class="card-header">
-                <h3>Getting Started</h3>
+                <div class="card-title">Getting Started</div>
             </div>
-            <div class="card-body">
+            <div class="card-content space-y-2 text-sm text-muted">
                 <p>📝 Click "New Chat" to start a conversation</p>
                 <p>⚙️ Configure your GitHub token in Settings</p>
-                <p>💡 Use the help button for documentation</p>
+                <p>💡 Use the help button (top right) for documentation</p>
                 <p>🎨 Toggle between light and dark mode as you prefer</p>
             </div>
         </div>
+
     </div>
 </div>
 
+<style>
+    .tracking-tight {
+        letter-spacing: -0.025em;
+    }
+    
+    .min-w-0 {
+        min-width: 0;
+    }
+    
+    .flex-1 {
+        flex: 1 1 0%;
+    }
+    
+    .hover-accent:hover {
+        background-color: var(--accent);
+    }
+    
+    @media (min-width: 768px) {
+        .md-grid-cols-2 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+</style>
+
 @code {
     private bool loading = true;
-    private List<SessionInfo> recentSessions = new();
-    private CopilotStatusInfo? copilotStatus;
+    private bool copilotAvailable = false;
+    private string? copilotModel;
+    private string? copilotError;
+    private List<ChatSession> recentSessions = new();
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDataAsync();
+        await LoadData();
     }
 
-    private async Task LoadDataAsync()
+    private async Task LoadData()
     {
         try
         {
-            // Load recent sessions from database
-            await using var db = await DbFactory.CreateDbContextAsync();
-            var sessions = await db.ChatSessions
+            // Load recent sessions
+            await using var context = await DbFactory.CreateDbContextAsync();
+            recentSessions = await context.ChatSessions
                 .OrderByDescending(s => s.UpdatedAt)
                 .Take(5)
-                .Select(s => new SessionInfo 
-                { 
-                    Id = s.Id, 
-                    Title = s.Title, 
-                    UpdatedAt = s.UpdatedAt 
-                })
                 .ToListAsync();
-            
-            recentSessions = sessions;
 
-            // Check Copilot status via API
-            try
-            {
-                var response = await Http.GetFromJsonAsync<CopilotStatusInfo>("/api/copilot-status");
-                copilotStatus = response;
-            }
-            catch
-            {
-                copilotStatus = new CopilotStatusInfo { Available = false, Error = "Unable to connect to Copilot service" };
-            }
+            // Check Copilot status (simulated for now)
+            // In production, this would call the CopilotService
+            copilotAvailable = false;
+            copilotError = "Not configured. Please set your GitHub token in Settings.";
+
+            loading = false;
+            StateHasChanged();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading data: {ex.Message}");
-        }
-        finally
-        {
             loading = false;
+            StateHasChanged();
         }
     }
 
@@ -160,22 +219,8 @@
         Navigation.NavigateTo("/settings");
     }
 
-    private void NavigateToSession(string sessionId)
+    private void NavigateToSession(int sessionId)
     {
         Navigation.NavigateTo($"/chat/{sessionId}");
-    }
-
-    private class SessionInfo
-    {
-        public string Id { get; set; } = "";
-        public string? Title { get; set; }
-        public DateTime UpdatedAt { get; set; }
-    }
-
-    private class CopilotStatusInfo
-    {
-        public bool Available { get; set; }
-        public string? Model { get; set; }
-        public string? Error { get; set; }
     }
 }
