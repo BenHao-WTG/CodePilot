@@ -1,0 +1,20 @@
+@inherits LayoutComponentBase
+
+<div class="app-container">
+    <header class="app-header">
+        <h1 class="app-title">CodePilot</h1>
+        <nav class="app-nav">
+            <NavLink href="/" Match="NavLinkMatch.All">Home</NavLink>
+            <NavLink href="/chat">Chat</NavLink>
+            <NavLink href="/settings">Settings</NavLink>
+        </nav>
+    </header>
+    
+    <main class="app-main">
+        @Body
+    </main>
+</div>
+
+@code {
+    // Main layout code
+}

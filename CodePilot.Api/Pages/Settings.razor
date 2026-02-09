@@ -1,0 +1,42 @@
+@page "/settings"
+@inject NavigationManager Navigation
+
+<PageTitle>CodePilot - Settings</PageTitle>
+
+<div class="settings-container">
+    <div class="settings-content">
+        <h1>Settings</h1>
+        <p>Settings page will be implemented here.</p>
+        <p>This is a placeholder page during the migration to Blazor.</p>
+        <button class="btn btn-outline" @onclick="GoHome">
+            ← Back to Home
+        </button>
+    </div>
+</div>
+
+<style>
+    .settings-container {
+        padding: 2rem;
+    }
+    
+    .settings-content {
+        max-width: 64rem;
+        margin: 0 auto;
+    }
+    
+    .settings-content h1 {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .settings-content p {
+        margin-bottom: 1rem;
+    }
+</style>
+
+@code {
+    private void GoHome()
+    {
+        Navigation.NavigateTo("/");
+    }
+}

@@ -1,0 +1,42 @@
+@page "/chat"
+@inject NavigationManager Navigation
+
+<PageTitle>CodePilot - Chat</PageTitle>
+
+<div class="chat-container">
+    <div class="chat-content">
+        <h1>Chat</h1>
+        <p>Chat functionality will be implemented here.</p>
+        <p>This is a placeholder page during the migration to Blazor.</p>
+        <button class="btn btn-outline" @onclick="GoHome">
+            ← Back to Home
+        </button>
+    </div>
+</div>
+
+<style>
+    .chat-container {
+        padding: 2rem;
+    }
+    
+    .chat-content {
+        max-width: 64rem;
+        margin: 0 auto;
+    }
+    
+    .chat-content h1 {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .chat-content p {
+        margin-bottom: 1rem;
+    }
+</style>
+
+@code {
+    private void GoHome()
+    {
+        Navigation.NavigateTo("/");
+    }
+}

@@ -1,0 +1,181 @@
+@page "/"
+@using CodePilot.Api.Data
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager Navigation
+@inject IDbContextFactory<CodePilotDbContext> DbFactory
+@inject HttpClient Http
+
+<PageTitle>CodePilot - Home</PageTitle>
+
+<div class="home-container">
+    <div class="home-content">
+        <!-- Welcome Section -->
+        <div class="welcome-section">
+            <h1>Welcome to CodePilot</h1>
+            <p class="subtitle">Your desktop GUI for GitHub Copilot</p>
+        </div>
+
+        <!-- Connection Status -->
+        @if (!loading)
+        {
+            <div class="status-card">
+                <div class="card-header">
+                    <span class="status-icon @(copilotStatus?.Available == true ? "status-connected" : "status-disconnected")">
+                        @(copilotStatus?.Available == true ? "✓" : "⚠")
+                    </span>
+                    <h3>GitHub Copilot Status</h3>
+                </div>
+                <div class="card-body">
+                    @if (copilotStatus?.Available == true)
+                    {
+                        <p>✅ Connected and ready to use</p>
+                        @if (!string.IsNullOrEmpty(copilotStatus.Model))
+                        {
+                            <p class="text-muted">Model: @copilotStatus.Model</p>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-warning">⚠️ GitHub Copilot is not connected</p>
+                        @if (!string.IsNullOrEmpty(copilotStatus?.Error))
+                        {
+                            <p class="text-muted">@copilotStatus.Error</p>
+                        }
+                        <button class="btn btn-outline" @onclick="NavigateToSettings">
+                            Configure Settings
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Action Cards -->
+        <div class="action-cards">
+            <div class="action-card" @onclick="NavigateToNewChat">
+                <h3>📝 New Chat</h3>
+                <p>Start a new conversation with GitHub Copilot</p>
+            </div>
+            <div class="action-card" @onclick="NavigateToSettings">
+                <h3>⚙️ Settings</h3>
+                <p>Configure your GitHub token and preferences</p>
+            </div>
+        </div>
+
+        <!-- Recent Sessions -->
+        @if (recentSessions.Count > 0)
+        {
+            <div class="sessions-card">
+                <div class="card-header">
+                    <h3>📂 Recent Sessions</h3>
+                    <p class="text-muted">Continue where you left off</p>
+                </div>
+                <div class="card-body">
+                    <div class="sessions-list">
+                        @foreach (var session in recentSessions)
+                        {
+                            <div class="session-item" @onclick="() => NavigateToSession(session.Id)">
+                                <div class="session-info">
+                                    <p class="session-title">@(session.Title ?? "Untitled Session")</p>
+                                    <p class="session-date">@session.UpdatedAt.ToLocalTime().ToString("g")</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Getting Started -->
+        <div class="info-card">
+            <div class="card-header">
+                <h3>Getting Started</h3>
+            </div>
+            <div class="card-body">
+                <p>📝 Click "New Chat" to start a conversation</p>
+                <p>⚙️ Configure your GitHub token in Settings</p>
+                <p>💡 Use the help button for documentation</p>
+                <p>🎨 Toggle between light and dark mode as you prefer</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool loading = true;
+    private List<SessionInfo> recentSessions = new();
+    private CopilotStatusInfo? copilotStatus;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            // Load recent sessions from database
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var sessions = await db.ChatSessions
+                .OrderByDescending(s => s.UpdatedAt)
+                .Take(5)
+                .Select(s => new SessionInfo 
+                { 
+                    Id = s.Id, 
+                    Title = s.Title, 
+                    UpdatedAt = s.UpdatedAt 
+                })
+                .ToListAsync();
+            
+            recentSessions = sessions;
+
+            // Check Copilot status via API
+            try
+            {
+                var response = await Http.GetFromJsonAsync<CopilotStatusInfo>("/api/copilot-status");
+                copilotStatus = response;
+            }
+            catch
+            {
+                copilotStatus = new CopilotStatusInfo { Available = false, Error = "Unable to connect to Copilot service" };
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void NavigateToNewChat()
+    {
+        Navigation.NavigateTo("/chat");
+    }
+
+    private void NavigateToSettings()
+    {
+        Navigation.NavigateTo("/settings");
+    }
+
+    private void NavigateToSession(string sessionId)
+    {
+        Navigation.NavigateTo($"/chat/{sessionId}");
+    }
+
+    private class SessionInfo
+    {
+        public string Id { get; set; } = "";
+        public string? Title { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+
+    private class CopilotStatusInfo
+    {
+        public bool Available { get; set; }
+        public string? Model { get; set; }
+        public string? Error { get; set; }
+    }
+}

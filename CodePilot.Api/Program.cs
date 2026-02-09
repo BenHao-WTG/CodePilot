@@ -1,6 +1,7 @@
 using CodePilot.Api.Data;
 using CodePilot.Api.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Add Blazor Server services
+builder.Services.AddRazorPages();
+builder.Services.AddServerSideBlazor();
+builder.Services.AddHttpClient();
 
 // Configure database
 var dataDir = Path.Combine(
@@ -23,8 +29,19 @@ var dbPath = Path.Combine(dataDir, "codepilot.db");
 builder.Services.AddDbContext<CodePilotDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
 
+// Add DbContextFactory for Blazor
+builder.Services.AddDbContextFactory<CodePilotDbContext>(options =>
+    options.UseSqlite($"Data Source={dbPath}"));
+
 // Register Copilot service
 builder.Services.AddSingleton<ICopilotService, CopilotService>();
+
+// Configure HttpClient for Blazor components
+builder.Services.AddScoped(sp =>
+{
+    var navigationManager = sp.GetRequiredService<NavigationManager>();
+    return new HttpClient { BaseAddress = new Uri(navigationManager.BaseUri) };
+});
 
 // Add CORS for local development
 builder.Services.AddCors(options =>
@@ -63,11 +80,12 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Map Blazor Hub and pages
+app.MapBlazorHub();
+app.MapFallbackToPage("/_Host");
+
 // Health check endpoint
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
-
-// Fallback to index.html for SPA routing
-app.MapFallbackToFile("index.html");
 
 Console.WriteLine($"CodePilot API Server starting...");
 Console.WriteLine($"Database: {dbPath}");
