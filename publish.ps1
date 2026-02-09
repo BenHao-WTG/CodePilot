@@ -1,9 +1,19 @@
-# PowerShell script to compile and publish CodePilot for Windows
-# This script builds the production-ready Windows runtime package
+# PowerShell script to compile and publish CodePilot WPF for Windows
+# This script builds the production-ready Windows WPF application
 
-Write-Host "CodePilot Publish Script for Windows" -ForegroundColor Cyan
-Write-Host "=====================================" -ForegroundColor Cyan
+Write-Host "CodePilot WPF + WebView2 Publish Script for Windows" -ForegroundColor Cyan
+Write-Host "====================================================" -ForegroundColor Cyan
 Write-Host ""
+
+# Check if .NET SDK is installed
+Write-Host "Checking .NET SDK installation..." -ForegroundColor Yellow
+$dotnetVersion = dotnet --version 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Error: .NET SDK is not installed or not in PATH" -ForegroundColor Red
+    Write-Host "Please install .NET 8.0 SDK or higher from https://dotnet.microsoft.com/download" -ForegroundColor Red
+    exit 1
+}
+Write-Host ".NET SDK version: $dotnetVersion" -ForegroundColor Green
 
 # Check if Node.js is installed
 Write-Host "Checking Node.js installation..." -ForegroundColor Yellow
@@ -42,50 +52,97 @@ if (Test-Path ".next") {
     Remove-Item -Path ".next" -Recurse -Force
     Write-Host "Removed '.next' directory" -ForegroundColor Green
 }
-if (Test-Path "dist-electron") {
-    Remove-Item -Path "dist-electron" -Recurse -Force
-    Write-Host "Removed 'dist-electron' directory" -ForegroundColor Green
+if (Test-Path "CodePilot.Desktop\bin") {
+    Remove-Item -Path "CodePilot.Desktop\bin" -Recurse -Force
+    Write-Host "Removed 'CodePilot.Desktop\bin' directory" -ForegroundColor Green
+}
+if (Test-Path "CodePilot.Desktop\obj") {
+    Remove-Item -Path "CodePilot.Desktop\obj" -Recurse -Force
+    Write-Host "Removed 'CodePilot.Desktop\obj' directory" -ForegroundColor Green
+}
+if (Test-Path "CodePilot.Api\bin") {
+    Remove-Item -Path "CodePilot.Api\bin" -Recurse -Force
+    Write-Host "Removed 'CodePilot.Api\bin' directory" -ForegroundColor Green
+}
+if (Test-Path "CodePilot.Api\obj") {
+    Remove-Item -Path "CodePilot.Api\obj" -Recurse -Force
+    Write-Host "Removed 'CodePilot.Api\obj' directory" -ForegroundColor Green
 }
 Write-Host "Cleanup completed" -ForegroundColor Green
 Write-Host ""
 
-# Install dependencies
-Write-Host "Installing dependencies..." -ForegroundColor Yellow
+# Install Node.js dependencies
+Write-Host "Installing Node.js dependencies..." -ForegroundColor Yellow
 npm install
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Error: Failed to install dependencies" -ForegroundColor Red
+    Write-Host "Error: Failed to install Node.js dependencies" -ForegroundColor Red
     exit 1
 }
-Write-Host "Dependencies installed successfully" -ForegroundColor Green
+Write-Host "Node.js dependencies installed successfully" -ForegroundColor Green
 Write-Host ""
 
-# Build the Windows package
-Write-Host "Building Windows package..." -ForegroundColor Yellow
+# Build Next.js frontend for production
+Write-Host "Building Next.js frontend for production..." -ForegroundColor Yellow
+npm run build
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Error: Next.js build failed" -ForegroundColor Red
+    exit 1
+}
+Write-Host "Next.js build completed successfully" -ForegroundColor Green
+Write-Host ""
+
+# Copy Next.js output to API wwwroot
+Write-Host "Copying Next.js output to API project..." -ForegroundColor Yellow
+if (!(Test-Path "CodePilot.Api\wwwroot")) {
+    New-Item -ItemType Directory -Path "CodePilot.Api\wwwroot" -Force | Out-Null
+}
+
+# Copy .next/static and public to wwwroot
+if (Test-Path ".next\static") {
+    Copy-Item -Path ".next\static" -Destination "CodePilot.Api\wwwroot\_next\" -Recurse -Force
+}
+if (Test-Path "public") {
+    Copy-Item -Path "public\*" -Destination "CodePilot.Api\wwwroot\" -Recurse -Force
+}
+Write-Host "Next.js output copied successfully" -ForegroundColor Green
+Write-Host ""
+
+# Publish API project
+Write-Host "Publishing Blazor API project..." -ForegroundColor Yellow
+dotnet publish CodePilot.Api\CodePilot.Api.csproj `
+    --configuration Release `
+    --output "CodePilot.Desktop\bin\Release\net8.0-windows\api" `
+    --self-contained false
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Error: API publish failed" -ForegroundColor Red
+    exit 1
+}
+Write-Host "API published successfully" -ForegroundColor Green
+Write-Host ""
+
+# Publish WPF Desktop project
+Write-Host "Publishing WPF Desktop project..." -ForegroundColor Yellow
 Write-Host "This may take several minutes..." -ForegroundColor Yellow
-npm run electron:pack:win
+dotnet publish CodePilot.Desktop\CodePilot.Desktop.csproj `
+    --configuration Release `
+    --runtime win-x64 `
+    --self-contained true `
+    --output "release\win-x64" `
+    /p:PublishSingleFile=true `
+    /p:IncludeNativeLibrariesForSelfExtract=true `
+    /p:PublishReadyToRun=true
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Error: Windows package build failed" -ForegroundColor Red
+    Write-Host "Error: WPF publish failed" -ForegroundColor Red
     exit 1
 }
 Write-Host ""
-Write-Host "Windows package build completed successfully!" -ForegroundColor Green
-Write-Host ""
-
-# Rebuild better-sqlite3 for local development environment
-Write-Host "Rebuilding better-sqlite3 for local development..." -ForegroundColor Yellow
-npm rebuild better-sqlite3
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Warning: Failed to rebuild better-sqlite3 (non-critical)" -ForegroundColor Yellow
-}
-else {
-    Write-Host "better-sqlite3 rebuilt successfully" -ForegroundColor Green
-}
+Write-Host "WPF Desktop publish completed successfully!" -ForegroundColor Green
 Write-Host ""
 
 # Show build artifacts
 Write-Host "Build artifacts:" -ForegroundColor Cyan
-if (Test-Path "release") {
-    Get-ChildItem -Path "release" -File | ForEach-Object {
+if (Test-Path "release\win-x64") {
+    Get-ChildItem -Path "release\win-x64" -File | Where-Object { $_.Extension -eq ".exe" -or $_.Extension -eq ".dll" } | ForEach-Object {
         $size = [math]::Round($_.Length / 1MB, 2)
         Write-Host "  - $($_.Name) ($size MB)" -ForegroundColor Green
     }
@@ -96,10 +153,14 @@ else {
 Write-Host ""
 
 Write-Host "Publish process complete!" -ForegroundColor Green
-Write-Host "Release files are in the 'release' directory" -ForegroundColor Cyan
+Write-Host "Release files are in the 'release\win-x64' directory" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Yellow
-Write-Host "1. Test the installer in the 'release' directory" -ForegroundColor White
-Write-Host "2. Update version in package.json if needed (current: $version)" -ForegroundColor White
-Write-Host "3. Create a GitHub Release and upload the artifacts" -ForegroundColor White
-Write-Host "4. Write release notes describing the changes" -ForegroundColor White
+Write-Host "1. Test the executable in the 'release\win-x64' directory" -ForegroundColor White
+Write-Host "2. Create an installer using tools like Inno Setup or WiX" -ForegroundColor White
+Write-Host "3. Update version in package.json if needed (current: $version)" -ForegroundColor White
+Write-Host "4. Create a GitHub Release and upload the artifacts" -ForegroundColor White
+Write-Host "5. Write release notes describing the changes" -ForegroundColor White
+Write-Host ""
+Write-Host "Note: This is now a Windows-only WPF application." -ForegroundColor Cyan
+Write-Host "WebView2 Runtime is required on target machines." -ForegroundColor Cyan
