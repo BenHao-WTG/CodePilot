@@ -59,18 +59,23 @@ Write-Host ""
 
 # Copy Next.js output to API wwwroot
 Write-Host "Copying Next.js output to API project..." -ForegroundColor Yellow
-if (!(Test-Path "CodePilot.Api\wwwroot")) {
-    New-Item -ItemType Directory -Path "CodePilot.Api\wwwroot" -Force | Out-Null
-}
 
-# Copy .next/standalone and public to wwwroot
-if (Test-Path ".next\static") {
-    Copy-Item -Path ".next\static" -Destination "CodePilot.Api\wwwroot\_next\" -Recurse -Force
+# Clean and recreate wwwroot directory
+if (Test-Path "CodePilot.Api\wwwroot") {
+    Write-Host "Cleaning existing wwwroot..." -ForegroundColor Gray
+    Remove-Item -Path "CodePilot.Api\wwwroot\*" -Recurse -Force -ErrorAction SilentlyContinue
 }
-if (Test-Path "public") {
-    Copy-Item -Path "public\*" -Destination "CodePilot.Api\wwwroot\" -Recurse -Force
+New-Item -ItemType Directory -Path "CodePilot.Api\wwwroot" -Force | Out-Null
+
+# Copy the entire Next.js static export from 'out' directory
+if (Test-Path "out") {
+    Write-Host "Copying Next.js static export from 'out' directory..." -ForegroundColor Gray
+    Copy-Item -Path "out\*" -Destination "CodePilot.Api\wwwroot\" -Recurse -Force
+    Write-Host "Next.js output copied successfully" -ForegroundColor Green
+} else {
+    Write-Host "Warning: 'out' directory not found. Next.js static export may have failed." -ForegroundColor Yellow
+    Write-Host "Creating placeholder index.html..." -ForegroundColor Yellow
 }
-Write-Host "Next.js output copied successfully" -ForegroundColor Green
 Write-Host ""
 
 # Restore .NET dependencies
