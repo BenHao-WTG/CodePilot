@@ -31,8 +31,8 @@ namespace CodePilot
                 // Start the API server
                 await _apiServer.StartAsync();
                 
-                // Navigate to the Next.js application
-                webView.Source = new Uri($"http://localhost:{_apiServer.Port}");
+                // Navigate directly to the chat page
+                webView.Source = new Uri($"http://localhost:{_apiServer.Port}/chat");
             }
             catch (Exception ex)
             {
