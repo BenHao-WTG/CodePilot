@@ -1,42 +1,435 @@
 @page "/settings"
-@inject NavigationManager Navigation
+@using CodePilot.Api.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<CodePilotDbContext> DbFactory
+@inject IJSRuntime JS
 
-<PageTitle>CodePilot - Settings</PageTitle>
+<PageTitle>Settings - CodePilot</PageTitle>
 
-<div class="settings-container">
-    <div class="settings-content">
+<div class="settings-page">
+    <div class="settings-header">
         <h1>Settings</h1>
-        <p>Settings page will be implemented here.</p>
-        <p>This is a placeholder page during the migration to Blazor.</p>
-        <button class="btn btn-outline" @onclick="GoHome">
-            ← Back to Home
-        </button>
+        <p class="text-muted">Manage CodePilot and GitHub Copilot CLI settings</p>
+    </div>
+
+    <div class="settings-content">
+        <div class="settings-container">
+            <!-- API Configuration Section -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <h3>GitHub Copilot Authentication</h3>
+                    <p class="help-text">
+                        Optional. Configure a GitHub token for Copilot API access.
+                        Leave empty to use the default authentication from Copilot CLI (copilot login).
+                    </p>
+                </div>
+                <div class="form-group">
+                    <label for="github-token">GitHub Token (GITHUB_TOKEN)</label>
+                    <input 
+                        type="@(showToken ? "text" : "password")" 
+                        id="github-token" 
+                        class="form-control" 
+                        @bind="githubToken"
+                        placeholder="ghp_..." />
+                    <div class="form-help">
+                        <label class="checkbox-inline">
+                            <input type="checkbox" @bind="showToken" /> Show token
+                        </label>
+                        <span>
+                            Generate a token at 
+                            <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">
+                                github.com/settings/tokens
+                            </a> with Copilot access permissions.
+                        </span>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" @onclick="SaveGitHubToken" disabled="@savingToken">
+                        @if (savingToken)
+                        {
+                            <span class="spinner"></span>
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span>💾</span>
+                            <span>Save GitHub Token</span>
+                        }
+                    </button>
+                    @if (tokenSaveStatus == "saved")
+                    {
+                        <span class="status-success">✓ Saved</span>
+                    }
+                    else if (tokenSaveStatus == "error")
+                    {
+                        <span class="status-error">✗ Failed to save</span>
+                    }
+                </div>
+            </div>
+
+            <!-- Copilot CLI Settings Section -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <h3>GitHub Copilot CLI Settings</h3>
+                    <p class="help-text">
+                        These settings are stored in ~/.copilot/settings.json
+                    </p>
+                </div>
+
+                @if (loadingSettings)
+                {
+                    <div class="loading-indicator">
+                        <span class="spinner"></span>
+                        <span>Loading settings...</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="tabs">
+                        <div class="tab-headers">
+                            <button class="tab-header @(activeTab == "form" ? "active" : "")" 
+                                    @onclick="() => activeTab = \"form\"">
+                                📝 Visual Editor
+                            </button>
+                            <button class="tab-header @(activeTab == "json" ? "active" : "")" 
+                                    @onclick="() => activeTab = \"json\"">
+                                { } JSON Editor
+                            </button>
+                        </div>
+
+                        @if (activeTab == "form")
+                        {
+                            <div class="tab-content">
+                                <div class="settings-fields">
+                                    <div class="field-group">
+                                        <label>Permissions</label>
+                                        <p class="field-help">Configure permission settings for GitHub Copilot CLI</p>
+                                        <textarea class="form-control code" rows="4" @bind="permissionsJson"></textarea>
+                                    </div>
+
+                                    <div class="field-group">
+                                        <label>Environment Variables</label>
+                                        <p class="field-help">Environment variables passed to GitHub Copilot</p>
+                                        <textarea class="form-control code" rows="4" @bind="envJson"></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button class="btn btn-primary" @onclick="() => SaveSettings(\"form\")" disabled="@savingSettings">
+                                        @if (savingSettings)
+                                        {
+                                            <span class="spinner"></span>
+                                            <span>Saving...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>💾</span>
+                                            <span>Save Changes</span>
+                                        }
+                                    </button>
+                                    <button class="btn btn-secondary" @onclick="ResetSettings" disabled="@savingSettings">
+                                        <span>🔄</span>
+                                        <span>Reset</span>
+                                    </button>
+                                    @if (settingsSaveSuccess)
+                                    {
+                                        <span class="status-success">✓ Settings saved successfully</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="tab-content">
+                                <textarea class="form-control code json-editor" rows="20" @bind="settingsJsonText"></textarea>
+                                @if (!string.IsNullOrEmpty(jsonError))
+                                {
+                                    <p class="error-text">@jsonError</p>
+                                }
+
+                                <div class="form-actions">
+                                    <button class="btn btn-primary" @onclick="() => SaveSettings(\"json\")" disabled="@savingSettings">
+                                        @if (savingSettings)
+                                        {
+                                            <span class="spinner"></span>
+                                            <span>Saving...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>💾</span>
+                                            <span>Save JSON</span>
+                                        }
+                                    </button>
+                                    <button class="btn btn-secondary" @onclick="FormatJson" disabled="@savingSettings">
+                                        <span>📝</span>
+                                        <span>Format</span>
+                                    </button>
+                                    <button class="btn btn-secondary" @onclick="ResetSettings" disabled="@savingSettings">
+                                        <span>🔄</span>
+                                        <span>Reset</span>
+                                    </button>
+                                    @if (settingsSaveSuccess)
+                                    {
+                                        <span class="status-success">✓ Settings saved successfully</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
     </div>
 </div>
 
-<style>
-    .settings-container {
-        padding: 2rem;
-    }
-    
-    .settings-content {
-        max-width: 64rem;
-        margin: 0 auto;
-    }
-    
-    .settings-content h1 {
-        font-size: 2rem;
-        margin-bottom: 1rem;
-    }
-    
-    .settings-content p {
-        margin-bottom: 1rem;
-    }
-</style>
-
 @code {
-    private void GoHome()
+    private string githubToken = "";
+    private bool showToken = false;
+    private bool savingToken = false;
+    private string tokenSaveStatus = "";
+
+    private bool loadingSettings = true;
+    private bool savingSettings = false;
+    private bool settingsSaveSuccess = false;
+    private string activeTab = "form";
+
+    private string permissionsJson = "{}";
+    private string envJson = "{}";
+    private string settingsJsonText = "{}";
+    private string originalSettingsJson = "{}";
+    private string jsonError = "";
+
+    protected override async Task OnInitializedAsync()
     {
-        Navigation.NavigateTo("/");
+        await LoadGitHubToken();
+        await LoadCopilotSettings();
+    }
+
+    private async Task LoadGitHubToken()
+    {
+        try
+        {
+            using var db = await DbFactory.CreateDbContextAsync();
+            var tokenSetting = await db.Settings.FirstOrDefaultAsync(s => s.Key == "github_token");
+            if (tokenSetting != null)
+            {
+                githubToken = tokenSetting.Value ?? "";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading GitHub token: {ex.Message}");
+        }
+    }
+
+    private async Task SaveGitHubToken()
+    {
+        savingToken = true;
+        tokenSaveStatus = "";
+        StateHasChanged();
+        
+        try
+        {
+            using var db = await DbFactory.CreateDbContextAsync();
+            var setting = await db.Settings.FirstOrDefaultAsync(s => s.Key == "github_token");
+            if (setting == null)
+            {
+                setting = new Setting { Key = "github_token", Value = githubToken };
+                db.Settings.Add(setting);
+            }
+            else
+            {
+                setting.Value = githubToken;
+            }
+            await db.SaveChangesAsync();
+            tokenSaveStatus = "saved";
+            StateHasChanged();
+            await Task.Delay(2000);
+            tokenSaveStatus = "";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving GitHub token: {ex.Message}");
+            tokenSaveStatus = "error";
+        }
+        finally
+        {
+            savingToken = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadCopilotSettings()
+    {
+        loadingSettings = true;
+        try
+        {
+            using var db = await DbFactory.CreateDbContextAsync();
+            
+            var permissionsSetting = await db.Settings.FirstOrDefaultAsync(s => s.Key == "permissions");
+            permissionsJson = permissionsSetting?.Value ?? "{}";
+
+            var envSetting = await db.Settings.FirstOrDefaultAsync(s => s.Key == "env");
+            envJson = envSetting?.Value ?? "{}";
+
+            // Build full settings JSON
+            var settings = new Dictionary<string, object>();
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(permissionsJson))
+                    settings["permissions"] = System.Text.Json.JsonSerializer.Deserialize<object>(permissionsJson) ?? new { };
+            }
+            catch { settings["permissions"] = new { }; }
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(envJson))
+                    settings["env"] = System.Text.Json.JsonSerializer.Deserialize<object>(envJson) ?? new { };
+            }
+            catch { settings["env"] = new { }; }
+
+            settingsJsonText = System.Text.Json.JsonSerializer.Serialize(settings, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            originalSettingsJson = settingsJsonText;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading Copilot settings: {ex.Message}");
+        }
+        finally
+        {
+            loadingSettings = false;
+        }
+    }
+
+    private async Task SaveSettings(string source)
+    {
+        savingSettings = true;
+        settingsSaveSuccess = false;
+        jsonError = "";
+        StateHasChanged();
+
+        try
+        {
+            Dictionary<string, object>? settings = null;
+
+            if (source == "json")
+            {
+                try
+                {
+                    settings = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(settingsJsonText);
+                }
+                catch
+                {
+                    jsonError = "Invalid JSON format";
+                    return;
+                }
+            }
+            else
+            {
+                settings = new Dictionary<string, object>();
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(permissionsJson))
+                        settings["permissions"] = System.Text.Json.JsonSerializer.Deserialize<object>(permissionsJson) ?? new { };
+                }
+                catch { }
+
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(envJson))
+                        settings["env"] = System.Text.Json.JsonSerializer.Deserialize<object>(envJson) ?? new { };
+                }
+                catch { }
+            }
+
+            if (settings != null)
+            {
+                using var db = await DbFactory.CreateDbContextAsync();
+
+                // Save permissions
+                if (settings.ContainsKey("permissions"))
+                {
+                    var permJson = System.Text.Json.JsonSerializer.Serialize(settings["permissions"]);
+                    var permSetting = await db.Settings.FirstOrDefaultAsync(s => s.Key == "permissions");
+                    if (permSetting == null)
+                    {
+                        db.Settings.Add(new Setting { Key = "permissions", Value = permJson });
+                    }
+                    else
+                    {
+                        permSetting.Value = permJson;
+                    }
+                }
+
+                // Save env
+                if (settings.ContainsKey("env"))
+                {
+                    var envJsonStr = System.Text.Json.JsonSerializer.Serialize(settings["env"]);
+                    var envSetting = await db.Settings.FirstOrDefaultAsync(s => s.Key == "env");
+                    if (envSetting == null)
+                    {
+                        db.Settings.Add(new Setting { Key = "env", Value = envJsonStr });
+                    }
+                    else
+                    {
+                        envSetting.Value = envJsonStr;
+                    }
+                }
+
+                await db.SaveChangesAsync();
+
+                // Update UI
+                settingsJsonText = System.Text.Json.JsonSerializer.Serialize(settings, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                originalSettingsJson = settingsJsonText;
+                settingsSaveSuccess = true;
+                StateHasChanged();
+
+                await Task.Delay(2000);
+                settingsSaveSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving settings: {ex.Message}");
+            jsonError = "Failed to save settings";
+        }
+        finally
+        {
+            savingSettings = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ResetSettings()
+    {
+        settingsJsonText = originalSettingsJson;
+        jsonError = "";
+
+        try
+        {
+            var settings = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(originalSettingsJson);
+            if (settings != null)
+            {
+                if (settings.ContainsKey("permissions"))
+                    permissionsJson = System.Text.Json.JsonSerializer.Serialize(settings["permissions"]);
+                if (settings.ContainsKey("env"))
+                    envJson = System.Text.Json.JsonSerializer.Serialize(settings["env"]);
+            }
+        }
+        catch { }
+    }
+
+    private void FormatJson()
+    {
+        try
+        {
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<object>(settingsJsonText);
+            settingsJsonText = System.Text.Json.JsonSerializer.Serialize(parsed, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            jsonError = "";
+        }
+        catch
+        {
+            jsonError = "Cannot format: invalid JSON";
+        }
     }
 }
