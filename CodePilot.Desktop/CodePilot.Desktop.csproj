@@ -16,6 +16,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
@@ -28,7 +36,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CodePilot.Api\CodePilot.Api.csproj" />
+    <ProjectReference Include="..\CodePilot.Api\CodePilot.Api.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <Private>false</Private>
+    </ProjectReference>
   </ItemGroup>
+
+  <Target Name="CopyApiServer" AfterTargets="Build">
+    <MSBuild Projects="..\CodePilot.Api\CodePilot.Api.csproj"
+             Targets="Publish"
+             Properties="Configuration=$(Configuration);PublishDir=$(MSBuildThisFileDirectory)$(OutputPath)api\;SelfContained=false;PublishSingleFile=false" />
+  </Target>
 
 </Project>

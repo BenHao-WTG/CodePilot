@@ -64,11 +64,11 @@ namespace CodePilot.Api.Services
                 }
 
                 // Initialize Copilot client
-                var clientConfig = new CopilotClientConfig
+                var clientConfig = new CopilotClientOptions
                 {
-                    GitHubToken = githubToken,
+                    GithubToken = githubToken,
                     CliPath = copilotPath,
-                    WorkingDirectory = workingDirectory ?? Environment.CurrentDirectory
+                    Cwd = workingDirectory ?? Environment.CurrentDirectory
                 };
 
                 await using var client = new CopilotClient(clientConfig);
@@ -82,7 +82,7 @@ namespace CodePilot.Api.Services
 
                 if (!string.IsNullOrEmpty(systemPrompt))
                 {
-                    sessionConfig.SystemMessage = new SystemMessage
+                    sessionConfig.SystemMessage = new SystemMessageConfig
                     {
                         Mode = SystemMessageMode.Append,
                         Content = systemPrompt
@@ -94,62 +94,59 @@ namespace CodePilot.Api.Services
                 var fullText = new StringBuilder();
 
                 // Set up event handlers for streaming
-                session.On(async (CopilotEvent evt) =>
+                session.On(async (SessionEvent evt) =>
                 {
                     try
                     {
-                        switch (evt.Type)
+                        switch (evt)
                         {
-                            case "assistant.message_delta":
-                                if (evt.Data is MessageDeltaEventData deltaData && !string.IsNullOrEmpty(deltaData.DeltaContent))
+                            case AssistantMessageDeltaEvent deltaEvt:
+                                if (!string.IsNullOrEmpty(deltaEvt.Data?.DeltaContent))
                                 {
-                                    fullText.Append(deltaData.DeltaContent);
-                                    await WriteSSEEvent(writer, "text", deltaData.DeltaContent);
+                                    fullText.Append(deltaEvt.Data.DeltaContent);
+                                    await WriteSSEEvent(writer, "text", deltaEvt.Data.DeltaContent);
                                 }
                                 break;
 
-                            case "assistant.message":
-                                if (evt.Data is MessageEventData messageData && !string.IsNullOrEmpty(messageData.Content))
+                            case AssistantMessageEvent messageEvt:
+                                if (!string.IsNullOrEmpty(messageEvt.Data?.Content))
                                 {
                                     fullText.Clear();
-                                    fullText.Append(messageData.Content);
+                                    fullText.Append(messageEvt.Data.Content);
                                 }
                                 break;
 
-                            case "tool.execution_start":
-                                if (evt.Data is ToolExecutionStartEventData toolStartData)
+                            case ToolExecutionStartEvent toolStartEvt:
+                                if (toolStartEvt.Data != null)
                                 {
                                     var toolUse = new
                                     {
-                                        id = toolStartData.ToolCallId,
-                                        name = toolStartData.ToolName,
-                                        input = toolStartData.Arguments ?? new Dictionary<string, object>()
+                                        id = toolStartEvt.Data.ToolCallId,
+                                        name = toolStartEvt.Data.ToolName,
+                                        input = toolStartEvt.Data.Arguments ?? new object()
                                     };
                                     await WriteSSEEvent(writer, "tool_use", JsonSerializer.Serialize(toolUse));
                                 }
                                 break;
 
-                            case "tool.execution_complete":
-                                if (evt.Data is ToolExecutionCompleteEventData toolCompleteData)
+                            case ToolExecutionCompleteEvent toolCompleteEvt:
+                                if (toolCompleteEvt.Data != null)
                                 {
                                     var toolResult = new
                                     {
-                                        tool_use_id = toolCompleteData.ToolCallId,
-                                        content = toolCompleteData.Result?.Content ?? toolCompleteData.Error?.Message ?? "",
-                                        is_error = !toolCompleteData.Success
+                                        tool_use_id = toolCompleteEvt.Data.ToolCallId,
+                                        content = toolCompleteEvt.Data.Result?.Content ?? toolCompleteEvt.Data.Error?.Message ?? "",
+                                        is_error = !toolCompleteEvt.Data.Success
                                     };
                                     await WriteSSEEvent(writer, "tool_result", JsonSerializer.Serialize(toolResult));
                                 }
                                 break;
 
-                            case "session.error":
-                                if (evt.Data is ErrorEventData errorData)
-                                {
-                                    await WriteSSEEvent(writer, "error", errorData.Message ?? "Unknown error");
-                                }
+                            case SessionErrorEvent errorEvt:
+                                await WriteSSEEvent(writer, "error", errorEvt.Data?.Message ?? "Unknown error");
                                 break;
 
-                            case "session.idle":
+                            case SessionIdleEvent:
                                 // Session is done
                                 var result = new { usage = (object?)null };
                                 await WriteSSEEvent(writer, "result", JsonSerializer.Serialize(result));
@@ -166,7 +163,7 @@ namespace CodePilot.Api.Services
                 });
 
                 // Send the message
-                await session.SendAsync(new SendMessageRequest { Prompt = prompt }, cancellationToken);
+                await session.SendAsync(new MessageOptions { Prompt = prompt }, cancellationToken);
 
                 // Wait for completion or cancellation
                 await Task.Delay(Timeout.Infinite, cancellationToken);
@@ -210,9 +207,9 @@ namespace CodePilot.Api.Services
                 }
 
                 // Try to create a client and start it
-                var clientConfig = new CopilotClientConfig
+                var clientConfig = new CopilotClientOptions
                 {
-                    GitHubToken = githubToken,
+                    GithubToken = githubToken,
                     CliPath = copilotPath
                 };
 
@@ -316,46 +313,5 @@ namespace CodePilot.Api.Services
             await writer.WriteLineAsync($"data: {JsonSerializer.Serialize(eventData)}");
             await writer.WriteLineAsync();
         }
-    }
-
-    // Event data classes to match the SDK
-    public class MessageDeltaEventData
-    {
-        public string? DeltaContent { get; set; }
-    }
-
-    public class MessageEventData
-    {
-        public string? Content { get; set; }
-    }
-
-    public class ToolExecutionStartEventData
-    {
-        public string ToolCallId { get; set; } = string.Empty;
-        public string ToolName { get; set; } = string.Empty;
-        public Dictionary<string, object>? Arguments { get; set; }
-    }
-
-    public class ToolExecutionCompleteEventData
-    {
-        public string ToolCallId { get; set; } = string.Empty;
-        public bool Success { get; set; }
-        public ToolResult? Result { get; set; }
-        public ToolError? Error { get; set; }
-    }
-
-    public class ToolResult
-    {
-        public string? Content { get; set; }
-    }
-
-    public class ToolError
-    {
-        public string? Message { get; set; }
-    }
-
-    public class ErrorEventData
-    {
-        public string? Message { get; set; }
     }
 }
