@@ -1,5 +1,5 @@
 @page "/chat"
-@page "/chat/{sessionId:int}"
+@page "/chat/{SessionIdParam}"
 @using CodePilot.Api.Data
 @using Microsoft.EntityFrameworkCore
 @inject IDbContextFactory<CodePilotDbContext> DbFactory
@@ -99,18 +99,18 @@
 
 @code {
     [Parameter]
-    public int? SessionId { get; set; }
+    public string? SessionIdParam { get; set; }
 
     private List<Message> messages = new();
     private string currentInput = "";
     private bool isStreaming = false;
-    private int currentSessionId;
+    private string currentSessionId = "";
 
     protected override async Task OnInitializedAsync()
     {
-        if (SessionId.HasValue)
+        if (!string.IsNullOrEmpty(SessionIdParam))
         {
-            await LoadSession(SessionId.Value);
+            await LoadSession(SessionIdParam);
         }
         else
         {
@@ -118,20 +118,22 @@
         }
     }
 
-    private async Task LoadSession(int sessionId)
+    private async Task LoadSession(string sessionId)
     {
         try
         {
             await using var context = await DbFactory.CreateDbContextAsync();
             
             var session = await context.ChatSessions
-                .Include(s => s.Messages)
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (session != null)
             {
                 currentSessionId = session.Id;
-                messages = session.Messages.OrderBy(m => m.CreatedAt).ToList();
+                messages = await context.Messages
+                    .Where(m => m.SessionId == sessionId)
+                    .OrderBy(m => m.CreatedAt)
+                    .ToListAsync();
                 StateHasChanged();
             }
         }
@@ -149,6 +151,7 @@
             
             var session = new ChatSession
             {
+                Id = Guid.NewGuid().ToString(),
                 Title = "New Chat",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -191,6 +194,7 @@
             // Save user message
             var message = new Message
             {
+                Id = Guid.NewGuid().ToString(),
                 SessionId = currentSessionId,
                 Role = "user",
                 Content = userMessage,
@@ -207,6 +211,7 @@
             
             var assistantMessage = new Message
             {
+                Id = Guid.NewGuid().ToString(),
                 SessionId = currentSessionId,
                 Role = "assistant",
                 Content = $"This is a simulated response to: {userMessage}\n\nIn production, this would stream from GitHub Copilot SDK.",
