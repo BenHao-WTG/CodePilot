@@ -1,3 +1,4 @@
+using CodePilot.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodePilot.Api.Controllers
@@ -6,23 +7,35 @@ namespace CodePilot.Api.Controllers
     [Route("api/copilot-status")]
     public class CopilotStatusController : ControllerBase
     {
+        private readonly ICopilotService _copilotService;
+        private readonly ILogger<CopilotStatusController> _logger;
+
+        public CopilotStatusController(
+            ICopilotService copilotService,
+            ILogger<CopilotStatusController> logger)
+        {
+            _copilotService = copilotService;
+            _logger = logger;
+        }
+
         [HttpGet]
-        public IActionResult GetStatus()
+        public async Task<IActionResult> GetStatus()
         {
             try
             {
-                // TODO: Implement actual Copilot status check
-                // For now, return a basic status
+                var status = await _copilotService.GetStatusAsync();
+                
                 return Ok(new
                 {
-                    connected = false,
-                    model = "gpt-4",
-                    message = "GitHub Copilot integration pending (C# SDK implementation needed)"
+                    connected = status.Connected,
+                    model = status.Model,
+                    message = status.Message,
+                    version = status.Version
                 });
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[GET /api/copilot-status] Error: {ex}");
+                _logger.LogError(ex, "Error getting Copilot status");
                 return StatusCode(500, new { error = ex.Message });
             }
         }

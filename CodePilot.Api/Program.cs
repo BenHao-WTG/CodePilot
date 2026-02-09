@@ -1,4 +1,5 @@
 using CodePilot.Api.Data;
+using CodePilot.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +22,9 @@ if (!Directory.Exists(dataDir))
 var dbPath = Path.Combine(dataDir, "codepilot.db");
 builder.Services.AddDbContext<CodePilotDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
+
+// Register Copilot service
+builder.Services.AddSingleton<ICopilotService, CopilotService>();
 
 // Add CORS for local development
 builder.Services.AddCors(options =>

@@ -1,7 +1,7 @@
 using CodePilot.Api.Data;
+using CodePilot.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace CodePilot.Api.Controllers
 {
@@ -10,26 +10,37 @@ namespace CodePilot.Api.Controllers
     public class ChatController : ControllerBase
     {
         private readonly CodePilotDbContext _context;
+        private readonly ICopilotService _copilotService;
+        private readonly ILogger<ChatController> _logger;
 
-        public ChatController(CodePilotDbContext context)
+        public ChatController(
+            CodePilotDbContext context,
+            ICopilotService copilotService,
+            ILogger<ChatController> logger)
         {
             _context = context;
+            _copilotService = copilotService;
+            _logger = logger;
         }
 
         [HttpPost]
-        public async Task<IActionResult> SendMessage([FromBody] SendMessageRequest request)
+        public async Task PostMessage([FromBody] SendMessageRequest request)
         {
             try
             {
                 if (string.IsNullOrEmpty(request.SessionId) || string.IsNullOrEmpty(request.Content))
                 {
-                    return BadRequest(new { error = "session_id and content are required" });
+                    Response.StatusCode = 400;
+                    await Response.WriteAsJsonAsync(new { error = "session_id and content are required" });
+                    return;
                 }
 
                 var session = await _context.ChatSessions.FindAsync(request.SessionId);
                 if (session == null)
                 {
-                    return NotFound(new { error = "Session not found" });
+                    Response.StatusCode = 404;
+                    await Response.WriteAsJsonAsync(new { error = "Session not found" });
+                    return;
                 }
 
                 // Save user message
@@ -53,47 +64,59 @@ namespace CodePilot.Api.Controllers
                     session.Title = title;
                 }
 
+                // Determine effective model and mode
+                var effectiveModel = request.Model ?? session.Model ?? "gpt-4";
+                var effectiveMode = request.Mode ?? session.Mode ?? "code";
+
+                // Determine system prompt based on mode
+                string? systemPromptOverride = null;
+                if (effectiveMode == "ask")
+                {
+                    systemPromptOverride = (session.SystemPrompt ?? "") +
+                        "\n\nYou are in Ask mode. Answer questions and provide information only. Do not use any tools, do not read or write files, do not execute commands. Only respond with text.";
+                }
+
                 session.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
-                // TODO: Implement GitHub Copilot SDK integration for C#
-                // For now, return a placeholder response indicating the feature is pending
+                // Set up SSE response
                 Response.ContentType = "text/event-stream";
-                Response.Headers.Add("Cache-Control", "no-cache");
-                Response.Headers.Add("Connection", "keep-alive");
+                Response.Headers.Append("Cache-Control", "no-cache");
+                Response.Headers.Append("Connection", "keep-alive");
 
-                var responseContent = "This is a placeholder response. The GitHub Copilot SDK integration in C# is pending implementation. " +
-                                    "The WPF + WebView2 + Blazor architecture is ready, but the Copilot streaming functionality needs to be ported from the Node.js SDK to C#.";
+                // Stream the response from Copilot SDK
+                var cancellationToken = HttpContext.RequestAborted;
+                
+                await using var responseStream = await _copilotService.StreamMessageAsync(
+                    prompt: request.Content,
+                    sessionId: request.SessionId,
+                    sdkSessionId: session.SdkSessionId,
+                    model: effectiveModel,
+                    systemPrompt: systemPromptOverride ?? session.SystemPrompt,
+                    workingDirectory: session.WorkingDirectory,
+                    permissionMode: effectiveMode,
+                    cancellationToken: cancellationToken);
 
-                // Send SSE event
-                await Response.WriteAsync($"event: message\n");
-                await Response.WriteAsync($"data: {JsonSerializer.Serialize(new { content = responseContent })}\n\n");
-                await Response.Body.FlushAsync();
+                // Copy the stream to response
+                await responseStream.CopyToAsync(Response.Body, cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
 
-                // Save assistant message
-                var assistantMessage = new Message
-                {
-                    Id = Guid.NewGuid().ToString("N"),
-                    SessionId = request.SessionId,
-                    Role = "assistant",
-                    Content = responseContent,
-                    CreatedAt = DateTime.UtcNow
-                };
+                // Note: Assistant message is saved by the CopilotService after streaming completes
+                // TODO: Collect the response and save it to the database
 
-                _context.Messages.Add(assistantMessage);
-                await _context.SaveChangesAsync();
-
-                // Send done event
-                await Response.WriteAsync($"event: done\n");
-                await Response.WriteAsync($"data: {{}}\n\n");
-                await Response.Body.FlushAsync();
-
-                return new EmptyResult();
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Chat request cancelled by client");
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[POST /api/chat] Error: {ex}");
-                return StatusCode(500, new { error = ex.Message });
+                _logger.LogError(ex, "Error in chat endpoint");
+                if (!Response.HasStarted)
+                {
+                    Response.StatusCode = 500;
+                    await Response.WriteAsJsonAsync(new { error = ex.Message });
+                }
             }
         }
 
