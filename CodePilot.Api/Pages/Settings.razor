@@ -88,11 +88,11 @@
                     <div class="tabs">
                         <div class="tab-headers">
                             <button class="tab-header @(activeTab == "form" ? "active" : "")" 
-                                    @onclick="() => activeTab = \"form\"">
+                                    @onclick='() => activeTab = "form"'>
                                 📝 Visual Editor
                             </button>
                             <button class="tab-header @(activeTab == "json" ? "active" : "")" 
-                                    @onclick="() => activeTab = \"json\"">
+                                    @onclick='() => activeTab = "json"'>
                                 { } JSON Editor
                             </button>
                         </div>
@@ -115,7 +115,7 @@
                                 </div>
 
                                 <div class="form-actions">
-                                    <button class="btn btn-primary" @onclick="() => SaveSettings(\"form\")" disabled="@savingSettings">
+                                    <button class="btn btn-primary" @onclick='() => SaveSettings("form")' disabled="@savingSettings">
                                         @if (savingSettings)
                                         {
                                             <span class="spinner"></span>
@@ -148,7 +148,7 @@
                                 }
 
                                 <div class="form-actions">
-                                    <button class="btn btn-primary" @onclick="() => SaveSettings(\"json\")" disabled="@savingSettings">
+                                    <button class="btn btn-primary" @onclick='() => SaveSettings("json")' disabled="@savingSettings">
                                         @if (savingSettings)
                                         {
                                             <span class="spinner"></span>
