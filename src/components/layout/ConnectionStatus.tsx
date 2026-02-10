@@ -12,24 +12,29 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-interface ClaudeStatus {
+interface CopilotStatus {
   connected: boolean;
-  version: string | null;
+  hasToken: boolean;
 }
 
 export function ConnectionStatus() {
-  const [status, setStatus] = useState<ClaudeStatus | null>(null);
+  const [status, setStatus] = useState<CopilotStatus | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const checkStatus = useCallback(async () => {
     try {
-      const res = await fetch("/api/claude-status");
+      // Check if we have a GitHub token configured
+      const res = await fetch("/api/providers");
       if (res.ok) {
-        const data: ClaudeStatus = await res.json();
-        setStatus(data);
+        const data = await res.json();
+        const activeProvider = data.providers?.find((p: { is_active: boolean }) => p.is_active);
+        const hasToken = !!activeProvider?.api_key || !!process.env.GITHUB_TOKEN;
+        setStatus({ connected: hasToken, hasToken });
+      } else {
+        setStatus({ connected: false, hasToken: false });
       }
     } catch {
-      setStatus({ connected: false, version: null });
+      setStatus({ connected: false, hasToken: false });
     }
   }, []);
 
@@ -75,12 +80,12 @@ export function ConnectionStatus() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {connected ? "Claude Code Connected" : "Claude Code Not Connected"}
+              {connected ? "GitHub Copilot Connected" : "GitHub Copilot Not Configured"}
             </DialogTitle>
             <DialogDescription>
               {connected
-                ? `Claude Code CLI v${status?.version} is running and ready.`
-                : "Claude Code CLI is required to use this application."}
+                ? "GitHub Copilot SDK is configured and ready."
+                : "A GitHub token is required to use this application."}
             </DialogDescription>
           </DialogHeader>
 
@@ -90,7 +95,7 @@ export function ConnectionStatus() {
                 <span className="block h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
                 <div>
                   <p className="font-medium text-emerald-700 dark:text-emerald-400">Active</p>
-                  <p className="text-xs text-muted-foreground">Version {status?.version}</p>
+                  <p className="text-xs text-muted-foreground">GitHub token configured</p>
                 </div>
               </div>
             </div>
@@ -98,28 +103,30 @@ export function ConnectionStatus() {
             <div className="space-y-4 text-sm">
               <div className="flex items-center gap-3 rounded-lg bg-red-500/10 px-4 py-3">
                 <span className="block h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" />
-                <p className="font-medium text-red-700 dark:text-red-400">Not detected</p>
+                <p className="font-medium text-red-700 dark:text-red-400">Token not configured</p>
               </div>
 
               <div>
-                <h4 className="font-medium mb-1.5">1. Install Claude Code</h4>
-                <code className="block rounded-md bg-muted px-3 py-2 text-xs">
-                  npm install -g @anthropic-ai/claude-code
-                </code>
+                <h4 className="font-medium mb-1.5">1. Get a GitHub Token</h4>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Visit{" "}
+                  <a
+                    href="https://github.com/settings/tokens"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    GitHub Settings
+                  </a>{" "}
+                  to create a personal access token
+                </p>
               </div>
 
               <div>
-                <h4 className="font-medium mb-1.5">2. Authenticate</h4>
-                <code className="block rounded-md bg-muted px-3 py-2 text-xs">
-                  claude login
-                </code>
-              </div>
-
-              <div>
-                <h4 className="font-medium mb-1.5">3. Verify Installation</h4>
-                <code className="block rounded-md bg-muted px-3 py-2 text-xs">
-                  claude --version
-                </code>
+                <h4 className="font-medium mb-1.5">2. Configure in Settings</h4>
+                <p className="text-xs text-muted-foreground">
+                  Go to Settings and add your GitHub token in the Provider section
+                </p>
               </div>
             </div>
           )}
