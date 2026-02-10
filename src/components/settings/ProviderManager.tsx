@@ -28,17 +28,8 @@ import type { ProviderFormData } from "./ProviderForm";
 import type { ApiProvider } from "@/types";
 
 const QUICK_PRESETS = [
-  { name: "Anthropic", provider_type: "anthropic", base_url: "https://api.anthropic.com" },
-  { name: "OpenRouter", provider_type: "openrouter", base_url: "https://openrouter.ai/api" },
-  { name: "GLM (CN)", provider_type: "custom", base_url: "https://open.bigmodel.cn/api/anthropic", extra_env: '{"API_TIMEOUT_MS":"3000000","ANTHROPIC_API_KEY":""}' },
-  { name: "GLM (Global)", provider_type: "custom", base_url: "https://api.z.ai/api/anthropic", extra_env: '{"API_TIMEOUT_MS":"3000000","ANTHROPIC_API_KEY":""}' },
-  { name: "Kimi Coding Plan", provider_type: "custom", base_url: "https://api.kimi.com/coding/", extra_env: '{"ANTHROPIC_AUTH_TOKEN":""}' },
-  { name: "Moonshot", provider_type: "custom", base_url: "https://api.moonshot.cn/anthropic", extra_env: '{"ANTHROPIC_API_KEY":""}' },
-  { name: "MiniMax (CN)", provider_type: "custom", base_url: "https://api.minimaxi.com/anthropic", extra_env: '{"API_TIMEOUT_MS":"3000000","CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC":"1","ANTHROPIC_API_KEY":""}' },
-  { name: "MiniMax (Global)", provider_type: "custom", base_url: "https://api.minimax.io/anthropic", extra_env: '{"API_TIMEOUT_MS":"3000000","CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC":"1","ANTHROPIC_API_KEY":""}' },
-  { name: "AWS Bedrock", provider_type: "bedrock", base_url: "" },
-  { name: "Google Vertex", provider_type: "vertex", base_url: "" },
-  { name: "LiteLLM", provider_type: "custom", base_url: "http://localhost:4000" },
+  { name: "GitHub Copilot", provider_type: "github", base_url: "" },
+  { name: "GitHub Enterprise", provider_type: "custom", base_url: "https://your-github-enterprise.com" },
 ];
 
 export function ProviderManager() {

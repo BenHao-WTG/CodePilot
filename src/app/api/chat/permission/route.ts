@@ -21,7 +21,6 @@ export async function POST(request: NextRequest) {
     if (decision.behavior === 'allow') {
       result = {
         allow: true,
-        updatedInput: decision.updatedInput,
       };
     } else {
       result = {

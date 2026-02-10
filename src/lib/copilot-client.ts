@@ -5,7 +5,7 @@ import type {
   Tool,
   MCPServerConfig,
   PermissionRequest,
-  PermissionHandler,
+  PermissionRequestResult,
 } from '@github/copilot-sdk';
 import type { ClaudeStreamOptions, SSEEvent, TokenUsage, MCPServerConfig as AppMCPServerConfig, PermissionRequestEvent, FileAttachment } from '@/types';
 import { isImageFile } from '@/types';
@@ -78,8 +78,8 @@ async function getCopilotClient(): Promise<CopilotClient> {
  */
 function toSdkMcpConfig(
   servers: Record<string, AppMCPServerConfig>
-): MCPServerConfig[] | undefined {
-  const result: MCPServerConfig[] = [];
+): Record<string, MCPServerConfig> | undefined {
+  const result: Record<string, MCPServerConfig> = {};
   
   for (const [name, config] of Object.entries(servers)) {
     const transport = config.type || 'stdio';
@@ -90,13 +90,13 @@ function toSdkMcpConfig(
           console.warn(`[mcp] stdio server "${name}" is missing command, skipping`);
           continue;
         }
-        result.push({
+        result[name] = {
           type: 'local',
-          name,
           command: config.command,
-          args: config.args,
+          args: config.args || [],
           env: config.env,
-        });
+          tools: ['*'], // Include all tools from this server
+        };
         break;
       }
 
@@ -106,18 +106,18 @@ function toSdkMcpConfig(
           console.warn(`[mcp] ${transport.toUpperCase()} server "${name}" is missing url, skipping`);
           continue;
         }
-        result.push({
-          type: 'remote',
-          name,
+        result[name] = {
+          type: transport as 'sse' | 'http',
           url: config.url,
           headers: config.headers,
-        });
+          tools: ['*'], // Include all tools from this server
+        };
         break;
       }
     }
   }
   
-  return result.length > 0 ? result : undefined;
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 /**
@@ -200,17 +200,17 @@ export function streamCopilot(options: ClaudeStreamOptions): ReadableStream<stri
 
         // Permission handler
         if (!skipPermissions) {
-          const permissionHandler: PermissionHandler = async (request: PermissionRequest) => {
+          sessionConfig.onPermissionRequest = async (request: PermissionRequest): Promise<PermissionRequestResult> => {
             const permissionRequestId = `perm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
             const permEvent: PermissionRequestEvent = {
               permissionRequestId,
-              toolName: request.toolName,
-              toolInput: request.arguments,
+              toolName: request.kind,
+              toolInput: request as Record<string, unknown>,
               suggestions: undefined,
               decisionReason: undefined,
               blockedPath: undefined,
-              toolUseId: request.toolCallId,
+              toolUseId: request.toolCallId || '',
               description: undefined,
             };
 
@@ -221,15 +221,12 @@ export function streamCopilot(options: ClaudeStreamOptions): ReadableStream<stri
             }));
 
             // Wait for user response
-            const result = await registerPendingPermission(permissionRequestId, request.arguments, abortController?.signal);
+            const result = await registerPendingPermission(permissionRequestId, request as Record<string, unknown>, abortController?.signal);
             
             return {
-              allow: result.allow,
-              updatedInput: result.updatedInput,
+              kind: result.allow ? 'approved' : 'denied-interactively-by-user',
             };
           };
-
-          sessionConfig.permissionHandler = permissionHandler;
         }
 
         // Create or resume session
@@ -275,24 +272,27 @@ export function streamCopilot(options: ClaudeStreamOptions): ReadableStream<stri
           }));
         });
 
-        session.on('tool.execution_end', (event) => {
+        session.on('tool.execution_complete', (event) => {
+          const result = event.data.result;
           controller.enqueue(formatSSE({
             type: 'tool_result',
             data: JSON.stringify({
               tool_use_id: event.data.toolCallId,
-              content: typeof event.data.result === 'string' 
-                ? event.data.result 
-                : JSON.stringify(event.data.result),
-              is_error: event.data.error !== undefined,
+              content: result && typeof result === 'object' && 'textResultForLlm' in result
+                ? result.textResultForLlm 
+                : typeof result === 'string'
+                  ? result
+                  : JSON.stringify(result),
+              is_error: !event.data.success,
             }),
           }));
         });
 
-        session.on('tool.output', (event) => {
-          if (event.data.output) {
+        session.on('tool.execution_partial_result', (event) => {
+          if (event.data.partialOutput) {
             controller.enqueue(formatSSE({
               type: 'tool_output',
-              data: event.data.output,
+              data: event.data.partialOutput,
             }));
           }
         });
@@ -313,9 +313,10 @@ export function streamCopilot(options: ClaudeStreamOptions): ReadableStream<stri
         });
 
         session.on('session.error', (event) => {
+          const errorData = event.data as { errorType?: string; message?: string; error?: string };
           controller.enqueue(formatSSE({ 
             type: 'error', 
-            data: event.data.error || 'Unknown error' 
+            data: errorData.message || errorData.error || 'Unknown error' 
           }));
           controller.enqueue(formatSSE({ type: 'done', data: '' }));
           controller.close();
@@ -363,7 +364,7 @@ export function streamCopilot(options: ClaudeStreamOptions): ReadableStream<stri
             fs.writeFileSync(filePath, buffer);
             
             attachments.push({
-              type: 'file',
+              type: 'file' as const,
               path: filePath,
               displayName: img.name,
             });
@@ -373,7 +374,7 @@ export function streamCopilot(options: ClaudeStreamOptions): ReadableStream<stri
         // Send message
         await session.send({
           prompt: finalPrompt,
-          attachments: attachments.length > 0 ? attachments : undefined,
+          attachments: attachments.length > 0 ? attachments as Array<{ type: 'file'; path: string; displayName?: string }> : undefined,
         });
 
       } catch (error) {
