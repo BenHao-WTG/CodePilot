@@ -1,4 +1,8 @@
-import type { PermissionResult } from '@anthropic-ai/claude-agent-sdk';
+// Permission result type compatible with Copilot SDK
+export interface PermissionResult {
+  allow: boolean;
+  updatedInput?: Record<string, unknown>;
+}
 
 interface PendingPermission {
   resolve: (result: PermissionResult) => void;
@@ -29,7 +33,7 @@ function cleanupExpired() {
   const now = Date.now();
   for (const [id, entry] of map) {
     if (now - entry.createdAt > TIMEOUT_MS) {
-      entry.resolve({ behavior: 'deny', message: 'Permission request timed out' });
+      entry.resolve({ allow: false });
       map.delete(id);
     }
   }
@@ -61,7 +65,7 @@ export function registerPendingPermission(
     if (abortSignal) {
       const onAbort = () => {
         if (map.has(id)) {
-          resolve({ behavior: 'deny', message: 'Request aborted' });
+          resolve({ allow: false });
           map.delete(id);
         }
       };
@@ -83,7 +87,7 @@ export function resolvePendingPermission(
   if (!entry) return false;
 
   // SDK requires updatedInput when allowing — inject the original tool input
-  if (result.behavior === 'allow' && !result.updatedInput) {
+  if (result.allow && !result.updatedInput) {
     result = { ...result, updatedInput: entry.toolInput };
   }
 

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { streamClaude } from '@/lib/claude-client';
+import { streamCopilot } from '@/lib/copilot-client';
 import { addMessage, getSession, updateSessionTitle, updateSdkSessionId, getSetting } from '@/lib/db';
 import type { SendMessageRequest, SSEEvent, TokenUsage, MessageContentBlock, FileAttachment } from '@/types';
 import fs from 'fs';
@@ -92,8 +92,8 @@ export async function POST(request: NextRequest) {
         }))
       : undefined;
 
-    // Stream Claude response, using SDK session ID for resume if available
-    const stream = streamClaude({
+    // Stream Copilot response, using SDK session ID for resume if available
+    const stream = streamCopilot({
       prompt: content,
       sessionId: session_id,
       sdkSessionId: session.sdk_session_id || undefined,
