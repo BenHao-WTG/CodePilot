@@ -73,13 +73,27 @@ namespace CodePilot
 
         private async void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
+            // Prevent window from closing immediately
+            e.Cancel = true;
+            
             try
             {
+                // Disable window to prevent further interaction
+                this.IsEnabled = false;
+                
+                // Stop the API server asynchronously
                 await _apiServer.StopAsync();
+                
+                // Now allow the window to close
+                e.Cancel = false;
+                Application.Current.Shutdown();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error stopping API server: {ex.Message}");
+                // Force close anyway
+                e.Cancel = false;
+                Application.Current.Shutdown();
             }
         }
     }

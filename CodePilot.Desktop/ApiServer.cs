@@ -63,16 +63,50 @@ namespace CodePilot
             await WaitForServerAsync();
         }
 
-        public Task StopAsync()
+        public async Task StopAsync()
         {
             if (_serverProcess != null && !_serverProcess.HasExited)
             {
-                _serverProcess.Kill(true);
-                _serverProcess.Dispose();
-                _serverProcess = null;
-            }
+                try
+                {
+                    // Try graceful shutdown first by sending shutdown signal
+                    using var client = new System.Net.Http.HttpClient();
+                    client.Timeout = TimeSpan.FromSeconds(2);
+                    
+                    try
+                    {
+                        await client.PostAsync($"http://localhost:{_port}/api/admin/shutdown", null);
+                    }
+                    catch
+                    {
+                        // Ignore errors - endpoint might not exist
+                    }
 
-            return Task.CompletedTask;
+                    // Wait for process to exit gracefully (max 3 seconds)
+                    var exited = _serverProcess.WaitForExit(3000);
+                    
+                    if (!exited)
+                    {
+                        // Force kill if still running
+                        _serverProcess.Kill(true);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error during graceful shutdown: {ex.Message}");
+                    // Force kill on error
+                    try
+                    {
+                        _serverProcess.Kill(true);
+                    }
+                    catch { /* Ignore */ }
+                }
+                finally
+                {
+                    _serverProcess.Dispose();
+                    _serverProcess = null;
+                }
+            }
         }
 
         private static int GetFreePort()

@@ -2,14 +2,18 @@
 @page "/chat/{SessionIdParam}"
 @using CodePilot.Api.Data
 @using Microsoft.EntityFrameworkCore
+@using System.Text.Json
 @inject IDbContextFactory<CodePilotDbContext> DbFactory
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <div class="flex flex-col h-full">
-    <div class="flex-1 overflow-auto p-6">
+    <!-- Message List -->
+    <div id="message-container" class="flex-1 overflow-auto p-6">
         <div class="max-w-4xl mx-auto space-y-4">
             
-            @if (messages.Count == 0)
+            @if (messages.Count == 0 && !isStreaming)
             {
                 <div class="text-center py-12 space-y-4">
                     <h2 class="text-2xl font-semibold">Start a conversation</h2>
@@ -27,6 +31,12 @@
                         <div class="whitespace-pre-wrap">
                             @message.Content
                         </div>
+                        @if (!string.IsNullOrEmpty(message.TokenUsage))
+                        {
+                            <div class="text-xs text-muted mt-2">
+                                @message.TokenUsage
+                            </div>
+                        }
                     </div>
                 </div>
             }
@@ -36,31 +46,98 @@
                 <div class="flex justify-start">
                     <div class="message-assistant">
                         <div class="text-sm font-medium mb-1">GitHub Copilot</div>
-                        <div class="flex items-center gap-2">
-                            <span class="spinner"></span>
-                            Thinking...
-                        </div>
+                        @if (!string.IsNullOrEmpty(streamingContent))
+                        {
+                            <div class="whitespace-pre-wrap">@streamingContent</div>
+                        }
+                        else
+                        {
+                            <div class="flex items-center gap-2">
+                                <span class="spinner"></span>
+                                Thinking...
+                            </div>
+                        }
+                        
+                        @if (toolUses.Count > 0)
+                        {
+                            <div class="mt-3 space-y-2">
+                                @foreach (var tool in toolUses)
+                                {
+                                    <div class="text-xs bg-muted p-2 rounded">
+                                        <strong>🔧 Using tool:</strong> @tool.Name
+                                    </div>
+                                }
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(streamingToolOutput))
+                        {
+                            <div class="mt-3 text-xs bg-muted p-2 rounded font-mono">
+                                <pre class="text-wrap">@streamingToolOutput</pre>
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(statusText))
+                        {
+                            <div class="mt-2 text-xs text-muted">
+                                @statusText
+                            </div>
+                        }
                     </div>
                 </div>
             }
         </div>
     </div>
     
+    <!-- Input Area -->
     <div class="border-t p-4">
-        <div class="max-w-4xl mx-auto">
+        <div class="max-w-4xl mx-auto space-y-3">
+            <!-- Controls -->
+            <div class="flex gap-2 items-center flex-wrap">
+                <select class="input text-sm" style="width: auto;" @bind="currentMode">
+                    <option value="code">Code Mode</option>
+                    <option value="ask">Ask Mode</option>
+                    <option value="plan">Plan Mode</option>
+                </select>
+                
+                <select class="input text-sm" style="width: auto;" @bind="currentModel">
+                    <option value="gpt-4">GPT-4</option>
+                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    <option value="sonnet">Claude Sonnet</option>
+                </select>
+                
+                @if (!string.IsNullOrEmpty(workingDirectory))
+                {
+                    <span class="text-xs text-muted">📁 @workingDirectory</span>
+                }
+            </div>
+            
+            <!-- Input -->
             <div class="flex gap-2">
-                <input type="text" 
-                       class="input flex-1" 
+                <textarea class="input flex-1" 
+                       rows="2"
                        @bind="currentInput"
                        @bind:event="oninput"
                        @onkeydown="HandleKeyPress"
                        placeholder="Ask GitHub Copilot..."
-                       disabled="@isStreaming" />
-                <button class="btn btn-primary" 
-                        @onclick="SendMessage" 
-                        disabled="@(string.IsNullOrWhiteSpace(currentInput) || isStreaming)">
-                    Send
-                </button>
+                       disabled="@isStreaming"
+                       style="resize: vertical; min-height: 60px;"></textarea>
+                
+                @if (isStreaming)
+                {
+                    <button class="btn btn-secondary" 
+                            @onclick="StopStreaming">
+                        Stop
+                    </button>
+                }
+                else
+                {
+                    <button class="btn btn-primary" 
+                            @onclick="SendMessage" 
+                            disabled="@(string.IsNullOrWhiteSpace(currentInput))">
+                        Send
+                    </button>
+                }
             </div>
         </div>
     </div>
@@ -94,6 +171,12 @@
 
     .whitespace-pre-wrap {
         white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    
+    .text-wrap {
+        white-space: pre-wrap;
+        word-wrap: break-word;
     }
 </style>
 
@@ -105,9 +188,21 @@
     private string currentInput = "";
     private bool isStreaming = false;
     private string currentSessionId = "";
+    private string streamingContent = "";
+    private string statusText = "";
+    private string streamingToolOutput = "";
+    private string currentMode = "code";
+    private string currentModel = "gpt-4";
+    private string workingDirectory = "";
+    private List<ToolUseInfo> toolUses = new();
+    
+    private DotNetObjectReference<Chat>? dotnetRef;
+    private bool disposed = false;
 
     protected override async Task OnInitializedAsync()
     {
+        dotnetRef = DotNetObjectReference.Create(this);
+        
         if (!string.IsNullOrEmpty(SessionIdParam))
         {
             await LoadSession(SessionIdParam);
@@ -115,6 +210,24 @@
         else
         {
             await CreateNewSession();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("chatHelper.init", dotnetRef);
+        }
+        
+        // Auto-scroll to bottom when new messages arrive
+        if (messages.Count > 0 || isStreaming)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("chatHelper.scrollToBottom", "message-container");
+            }
+            catch { /* Ignore JS errors */ }
         }
     }
 
@@ -130,6 +243,9 @@
             if (session != null)
             {
                 currentSessionId = session.Id;
+                currentMode = session.Mode ?? "code";
+                workingDirectory = session.WorkingDirectory ?? "";
+                
                 messages = await context.Messages
                     .Where(m => m.SessionId == sessionId)
                     .OrderBy(m => m.CreatedAt)
@@ -153,6 +269,7 @@
             {
                 Id = Guid.NewGuid().ToString(),
                 Title = "New Chat",
+                Mode = currentMode,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -182,9 +299,20 @@
         if (string.IsNullOrWhiteSpace(currentInput) || isStreaming)
             return;
 
-        var userMessage = currentInput;
+        // Handle commands
+        if (currentInput.StartsWith("/"))
+        {
+            await HandleCommand(currentInput.Trim());
+            return;
+        }
+
+        var userMessage = currentInput.Trim();
         currentInput = "";
         isStreaming = true;
+        streamingContent = "";
+        statusText = "";
+        streamingToolOutput = "";
+        toolUses.Clear();
         StateHasChanged();
 
         try
@@ -206,15 +334,148 @@
             messages.Add(message);
             StateHasChanged();
 
-            // Simulate assistant response
-            await Task.Delay(1000);
+            // Start streaming via JavaScript
+            await JS.InvokeVoidAsync("chatHelper.startStreaming", 
+                currentSessionId, userMessage, currentMode, currentModel);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending message: {ex.Message}");
+            isStreaming = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task StopStreaming()
+    {
+        await JS.InvokeVoidAsync("chatHelper.stopStreaming");
+        isStreaming = false;
+        
+        // Save partial response if any
+        if (!string.IsNullOrEmpty(streamingContent))
+        {
+            await SaveAssistantMessage(streamingContent + "\n\n*(generation stopped)*");
+        }
+        
+        streamingContent = "";
+        statusText = "";
+        streamingToolOutput = "";
+        toolUses.Clear();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task OnStreamEvent(JsonElement eventData)
+    {
+        try
+        {
+            var eventType = eventData.GetProperty("type").GetString();
+            
+            switch (eventType)
+            {
+                case "text":
+                    var text = eventData.GetProperty("data").GetString() ?? "";
+                    streamingContent += text;
+                    StateHasChanged();
+                    break;
+                    
+                case "tool_use":
+                    var toolData = eventData.GetProperty("data").GetString();
+                    if (!string.IsNullOrEmpty(toolData))
+                    {
+                        var toolInfo = JsonSerializer.Deserialize<ToolUseInfo>(toolData);
+                        if (toolInfo != null && !toolUses.Any(t => t.Id == toolInfo.Id))
+                        {
+                            toolUses.Add(toolInfo);
+                            streamingToolOutput = "";
+                            StateHasChanged();
+                        }
+                    }
+                    break;
+                    
+                case "tool_output":
+                    var output = eventData.GetProperty("data").GetString() ?? "";
+                    streamingToolOutput += (streamingToolOutput.Length > 0 ? "\n" : "") + output;
+                    if (streamingToolOutput.Length > 5000)
+                    {
+                        streamingToolOutput = streamingToolOutput.Substring(streamingToolOutput.Length - 5000);
+                    }
+                    StateHasChanged();
+                    break;
+                    
+                case "status":
+                    statusText = eventData.GetProperty("data").GetString() ?? "";
+                    StateHasChanged();
+                    break;
+                    
+                case "error":
+                    streamingContent += "\n\n**Error:** " + eventData.GetProperty("data").GetString();
+                    StateHasChanged();
+                    break;
+                    
+                case "done":
+                    // Stream complete handled in OnStreamComplete
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error handling stream event: {ex.Message}");
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnStreamComplete()
+    {
+        isStreaming = false;
+        
+        // Save assistant message
+        if (!string.IsNullOrEmpty(streamingContent))
+        {
+            await SaveAssistantMessage(streamingContent.Trim());
+        }
+        
+        streamingContent = "";
+        statusText = "";
+        streamingToolOutput = "";
+        toolUses.Clear();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnStreamError(string errorMessage)
+    {
+        isStreaming = false;
+        
+        var errorMsg = new Message
+        {
+            Id = Guid.NewGuid().ToString(),
+            SessionId = currentSessionId,
+            Role = "assistant",
+            Content = $"**Error:** {errorMessage}",
+            CreatedAt = DateTime.UtcNow
+        };
+        
+        messages.Add(errorMsg);
+        streamingContent = "";
+        statusText = "";
+        streamingToolOutput = "";
+        toolUses.Clear();
+        StateHasChanged();
+    }
+
+    private async Task SaveAssistantMessage(string content)
+    {
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
             
             var assistantMessage = new Message
             {
                 Id = Guid.NewGuid().ToString(),
                 SessionId = currentSessionId,
                 Role = "assistant",
-                Content = $"This is a simulated response to: {userMessage}\n\nIn production, this would stream from GitHub Copilot SDK.",
+                Content = content,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -227,7 +488,13 @@
                 session.UpdatedAt = DateTime.UtcNow;
                 if (session.Title == "New Chat" && messages.Count <= 2)
                 {
-                    session.Title = userMessage.Length > 50 ? userMessage.Substring(0, 47) + "..." : userMessage;
+                    var firstUserMsg = messages.FirstOrDefault(m => m.Role == "user");
+                    if (firstUserMsg != null)
+                    {
+                        session.Title = firstUserMsg.Content.Length > 50 
+                            ? firstUserMsg.Content.Substring(0, 47) + "..." 
+                            : firstUserMsg.Content;
+                    }
                 }
             }
 
@@ -236,12 +503,88 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error sending message: {ex.Message}");
+            Console.WriteLine($"Error saving assistant message: {ex.Message}");
         }
-        finally
+    }
+
+    private async Task HandleCommand(string command)
+    {
+        currentInput = "";
+        StateHasChanged();
+        
+        switch (command.ToLower())
         {
-            isStreaming = false;
-            StateHasChanged();
+            case "/help":
+                var helpMsg = new Message
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    SessionId = currentSessionId,
+                    Role = "assistant",
+                    Content = @"## Available Commands
+
+- **/help** - Show this help message
+- **/clear** - Clear conversation history
+- **/cost** - Show token usage statistics
+
+**Tips:**
+- Type your question and press Enter to send
+- Use Shift+Enter for new line
+- Select mode (Code/Ask/Plan) for different behaviors",
+                    CreatedAt = DateTime.UtcNow
+                };
+                messages.Add(helpMsg);
+                StateHasChanged();
+                break;
+                
+            case "/clear":
+                messages.Clear();
+                StateHasChanged();
+                break;
+                
+            case "/cost":
+                var costMsg = new Message
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    SessionId = currentSessionId,
+                    Role = "assistant",
+                    Content = "## Token Usage\n\nToken usage is displayed at the bottom of each assistant response when available.",
+                    CreatedAt = DateTime.UtcNow
+                };
+                messages.Add(costMsg);
+                StateHasChanged();
+                break;
+                
+            default:
+                // Unknown command, send as regular message
+                currentInput = command;
+                await SendMessage();
+                break;
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!disposed)
+        {
+            disposed = true;
+            
+            if (dotnetRef != null)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("chatHelper.dispose");
+                }
+                catch { /* Ignore errors during disposal */ }
+                
+                dotnetRef.Dispose();
+                dotnetRef = null;
+            }
+        }
+    }
+
+    private class ToolUseInfo
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
     }
 }
