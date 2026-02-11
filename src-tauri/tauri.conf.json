@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "codepilot",
-  "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "productName": "CodePilot",
+  "version": "0.8.0",
+  "identifier": "com.codepilot.app",
   "build": {
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000",
@@ -12,9 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "codepilot",
-        "width": 800,
-        "height": 600,
+        "title": "CodePilot",
+        "width": 1280,
+        "height": 860,
         "resizable": true,
         "fullscreen": false
       }
@@ -32,6 +32,11 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    }
   }
 }
