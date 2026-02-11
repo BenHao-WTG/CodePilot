@@ -188,7 +188,7 @@ export function ChatListPanel({ open, width }: ChatListPanelProps) {
             </Button>
           </TooltipTrigger>
           <TooltipContent side="right">
-            Import conversations from Claude Code CLI
+            Import sessions (disabled)
           </TooltipContent>
         </Tooltip>
       </div>

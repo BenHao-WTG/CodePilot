@@ -81,7 +81,7 @@ interface CommandBadge {
   label: string;
   description: string;
   isSkill: boolean;
-  installedSource?: "agents" | "claude";
+  installedSource?: "agents" | "copilot";
 }
 
 type PopoverMode = 'file' | 'skill' | null;
@@ -90,7 +90,7 @@ type PopoverMode = 'file' | 'skill' | null;
 // SDK-native commands (/compact, /init, /review) are sent as-is — the SDK handles them directly.
 const COMMAND_PROMPTS: Record<string, string> = {
   '/doctor': 'Run diagnostic checks on this project. Check system health, dependencies, configuration files, and report any issues.',
-  '/terminal-setup': 'Help me configure my terminal for optimal use with Claude Code. Check current setup and suggest improvements.',
+  '/terminal-setup': 'Help me configure my terminal for optimal use with AI coding. Check current setup and suggest improvements.',
   '/memory': 'Show the current CLAUDE.md project memory file and help me review or edit it.',
 };
 

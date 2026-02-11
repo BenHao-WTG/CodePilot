@@ -199,7 +199,7 @@ export function ProviderManager() {
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Manage API providers for Claude Code. The active provider will be used for all sessions.
+            Manage API providers for GitHub Copilot. The active provider will be used for all sessions.
           </p>
         </div>
         <Button size="sm" className="gap-1" onClick={handleAdd}>
@@ -277,7 +277,7 @@ export function ProviderManager() {
             <p className="text-xs mt-0.5">
               {Object.keys(envDetected).length > 0
                 ? "Using environment variables. Add a provider below to override."
-                : "Add a provider to use a custom API endpoint with Claude Code."}
+                : "Add a provider to use a custom API endpoint with GitHub Copilot."}
             </p>
           </div>
           {/* Quick preset buttons */}
