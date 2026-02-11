@@ -1,9 +1,8 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',

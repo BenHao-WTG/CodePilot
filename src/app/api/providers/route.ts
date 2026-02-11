@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getAllProviders, createProvider } from '@/lib/db';
 import type { ProviderResponse, ErrorResponse, CreateProviderRequest, ApiProvider } from '@/types';
+
 
 function maskApiKey(provider: ApiProvider): ApiProvider {
   let maskedKey = provider.api_key;

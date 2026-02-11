@@ -25,18 +25,12 @@ import { Loading02Icon, ArrowDown01Icon, ArrowUp01Icon } from "@hugeicons/core-f
 import type { ApiProvider } from "@/types";
 
 const PROVIDER_PRESETS: Record<string, { base_url: string; extra_env: string }> = {
-  anthropic: { base_url: "https://api.anthropic.com", extra_env: "{}" },
-  openrouter: { base_url: "https://openrouter.ai/api", extra_env: '{"ANTHROPIC_API_KEY":""}' },
-  bedrock: { base_url: "", extra_env: '{"CLAUDE_CODE_USE_BEDROCK":"1","AWS_REGION":"us-east-1","CLAUDE_CODE_SKIP_BEDROCK_AUTH":"1"}' },
-  vertex: { base_url: "", extra_env: '{"CLAUDE_CODE_USE_VERTEX":"1","CLOUD_ML_REGION":"us-east5","CLAUDE_CODE_SKIP_VERTEX_AUTH":"1"}' },
+  github: { base_url: "", extra_env: "{}" },
   custom: { base_url: "", extra_env: "{}" },
 };
 
 const PROVIDER_TYPES = [
-  { value: "anthropic", label: "Anthropic" },
-  { value: "openrouter", label: "OpenRouter" },
-  { value: "bedrock", label: "AWS Bedrock" },
-  { value: "vertex", label: "Google Vertex" },
+  { value: "github", label: "GitHub Copilot" },
   { value: "custom", label: "Custom" },
 ];
 
@@ -113,8 +107,8 @@ export function ProviderForm({
       }
     } else {
       setName("");
-      setProviderType("anthropic");
-      setBaseUrl(PROVIDER_PRESETS.anthropic.base_url);
+      setProviderType("github");
+      setBaseUrl(PROVIDER_PRESETS.github.base_url);
       setApiKey("");
       setExtraEnv("{}");
       setNotes("");
@@ -183,7 +177,7 @@ export function ProviderForm({
           <DialogDescription>
             {mode === "edit"
               ? "Update the API provider configuration."
-              : "Configure a new API provider for Claude Code."}
+              : "Configure a new API provider for GitHub Copilot."}
           </DialogDescription>
         </DialogHeader>
 
@@ -225,7 +219,7 @@ export function ProviderForm({
             </Label>
             <Input
               id="provider-base-url"
-              placeholder="https://api.anthropic.com"
+              placeholder="https://api.github.com (optional)"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
               className="font-mono text-sm"
@@ -234,12 +228,12 @@ export function ProviderForm({
 
           <div className="space-y-2">
             <Label htmlFor="provider-api-key" className="text-xs text-muted-foreground">
-              API Key
+              GitHub Token
             </Label>
             <Input
               id="provider-api-key"
               type="password"
-              placeholder={isMaskedKey ? "Leave empty to keep current key" : "sk-ant-..."}
+              placeholder={isMaskedKey ? "Leave empty to keep current token" : "ghp_..."}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               className="font-mono text-sm"

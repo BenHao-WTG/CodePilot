@@ -1,7 +1,7 @@
 <img src="docs/icon-readme.png" width="32" height="32" alt="CodePilot" style="vertical-align: middle; margin-right: 8px;" /> CodePilot
 ===
 
-**A native desktop GUI for Claude Code** -- chat, code, and manage projects through a polished visual interface instead of the terminal.
+**A native desktop GUI for GitHub Copilot** -- chat, code, and manage projects through a polished visual interface powered by the GitHub Copilot SDK.
 
 [![GitHub release](https://img.shields.io/github/v/release/op7418/CodePilot)](https://github.com/op7418/CodePilot/releases)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)](https://github.com/op7418/CodePilot/releases)
@@ -13,19 +13,19 @@
 
 ## Features
 
-- **💬 Conversational coding** -- Stream responses from Claude in real time with full Markdown rendering, syntax-highlighted code blocks, and tool-call visualization.
+- **💬 Conversational coding** -- Stream responses from GitHub Copilot in real time with full Markdown rendering, syntax-highlighted code blocks, and tool-call visualization.
 - **📂 Session management** -- Create, rename, archive, and resume chat sessions. Conversations are persisted locally in SQLite so nothing is lost between restarts.
-- **🎯 Project-aware context** -- Pick a working directory per session. The right panel shows a live file tree and file previews so you always know what Claude is looking at.
+- **🎯 Project-aware context** -- Pick a working directory per session. The right panel shows a live file tree and file previews so you always know what Copilot is looking at.
 - **🔒 Permission controls** -- Approve, deny, or auto-allow tool use on a per-action basis. Choose between permission modes to match your comfort level.
-- **🎭 Multiple interaction modes** -- Switch between *Code*, *Plan*, and *Ask* modes to control how Claude behaves in each session.
-- **🤖 Model selector** -- Switch between Claude models (Opus, Sonnet, Haiku) mid-conversation.
+- **🎭 Multiple interaction modes** -- Switch between *Code*, *Plan*, and *Ask* modes to control how Copilot behaves in each session.
+- **🤖 Model selector** -- Switch between available models (GPT-5, Claude Sonnet, etc.) mid-conversation.
 - **🔌 MCP server management** -- Add, configure, and remove Model Context Protocol servers directly from the Extensions page. Supports `stdio`, `sse`, and `http` transport types.
 - **⚡ Custom skills** -- Define reusable prompt-based skills (global or per-project) that can be invoked as slash commands during chat.
-- **⚙️ Settings editor** -- Visual and JSON editors for your `~/.claude/settings.json`, including permissions and environment variables.
+- **⚙️ Settings editor** -- Configure your GitHub token and API providers directly in the app.
 - **📊 Token usage tracking** -- See input/output token counts and estimated cost after every assistant response.
 - **🌗 Dark / Light theme** -- One-click theme toggle in the navigation rail.
 - **⌨️ Slash commands** -- Built-in commands like `/help`, `/clear`, `/cost`, `/compact`, `/doctor`, `/review`, and more.
-- **🖥️ Electron packaging** -- Ships as a native desktop app with a hidden title bar, bundled Next.js server, and automatic port allocation.
+- **🖥️ Desktop application** -- Built with Tauri for a lightweight, secure, and cross-platform desktop experience.
 
 ---
 
@@ -37,12 +37,22 @@
 
 ## Prerequisites
 
-> **Important**: CodePilot calls the Claude Code Agent SDK under the hood. Make sure `claude` is available on your `PATH` and that you have authenticated (`claude login`) before launching the app.
+> **Important**: CodePilot uses the GitHub Copilot SDK. You need a GitHub token with Copilot access.
+
+### For Users (Pre-built Releases)
+
+| Requirement | Minimum version |
+|---|---|
+| **Windows** | Windows 10 or later |
+| **GitHub Token** | Personal access token or GitHub Copilot subscription |
+
+### For Developers (Building from Source)
 
 | Requirement | Minimum version |
 |---|---|
 | **Node.js** | 18+ |
-| **Claude Code CLI** | Installed and authenticated (`claude --version` should work) |
+| **Rust** | Latest stable (install from https://rustup.rs/) |
+| **GitHub Token** | Personal access token or GitHub Copilot subscription |
 | **npm** | 9+ (ships with Node 18) |
 
 ---
@@ -61,22 +71,43 @@ Pre-built releases are available on the [**Releases**](https://github.com/op7418
 
 ## Quick Start
 
+### For Users
+
+Download the latest release from the [**Releases**](https://github.com/BenHao-WTG/CodePilot/releases) page.
+
+**Windows:**
+1. Download `CodePilot-{version}-windows-installer.msi`
+2. Run the installer and follow the wizard
+3. Launch CodePilot from the Start Menu
+
+### For Developers
+
 ```bash
 # Clone the repository
-git clone https://github.com/op7418/CodePilot.git
-cd codepilot
+git clone https://github.com/BenHao-WTG/CodePilot.git
+cd CodePilot
 
 # Install dependencies
 npm install
 
-# Start in development mode (browser)
-npm run dev
-
-# -- or start the full Electron app in dev mode --
-npm run electron:dev
+# Start in development mode
+npm run tauri:dev
 ```
 
-Then open [http://localhost:3000](http://localhost:3000) (browser mode) or wait for the Electron window to appear.
+This will start the Next.js dev server and launch the Tauri application window.
+
+### Building for Windows
+
+See [BUILD.md](BUILD.md) for detailed build instructions.
+
+**Quick build:**
+```powershell
+# Standard release build
+.\build.ps1
+
+# Publish release artifacts
+.\publish.ps1
+```
 
 ---
 
@@ -129,18 +160,17 @@ Windows SmartScreen will block the installer or executable.
 
 | Layer | Technology |
 |---|---|
-| Framework | [Next.js 16](https://nextjs.org/) (App Router) |
-| Desktop shell | [Electron 40](https://www.electronjs.org/) |
+| Framework | [Next.js 16](https://nextjs.org/) (Static Export) |
+| Desktop shell | [Tauri 2.0](https://tauri.app/) |
 | UI components | [Radix UI](https://www.radix-ui.com/) + [shadcn/ui](https://ui.shadcn.com/) |
 | Styling | [Tailwind CSS 4](https://tailwindcss.com/) |
 | Animation | [Motion](https://motion.dev/) (Framer Motion) |
-| AI integration | [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) |
+| AI integration | [GitHub Copilot SDK](https://github.com/github/copilot-sdk) |
 | Database | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) (embedded, per-user) |
 | Markdown | react-markdown + remark-gfm + rehype-raw + [Shiki](https://shiki.style/) |
-| Streaming | [Vercel AI SDK](https://sdk.vercel.ai/) helpers + Server-Sent Events |
+| Streaming | Server-Sent Events (SSE) |
 | Icons | [Hugeicons](https://hugeicons.com/) + [Lucide](https://lucide.dev/) |
-| Testing | [Playwright](https://playwright.dev/) |
-| Build / Pack | electron-builder + esbuild |
+| Build | Tauri CLI + Rust + Cargo |
 
 ---
 
@@ -192,25 +222,28 @@ codepilot/
 # Run Next.js dev server only (opens in browser)
 npm run dev
 
-# Run the full Electron app in dev mode
-# (starts Next.js + waits for it, then opens Electron)
-npm run electron:dev
+# Run the Tauri app in dev mode with hot reload
+npm run tauri:dev
 
 # Production build (Next.js static export)
 npm run build
 
-# Build Electron distributable + Next.js
-npm run electron:build
+# Build Tauri Windows executable
+npm run tauri:build
 
-# Package macOS DMG (universal binary)
-npm run electron:pack
+# Or use PowerShell scripts (Windows)
+.\build.ps1          # Build release
+.\build.ps1 -Debug   # Build debug version
+.\publish.ps1        # Create release package
 ```
 
 ### Notes
 
-- The Electron main process (`electron/main.ts`) forks the Next.js standalone server and connects to it over `127.0.0.1` with a random free port.
+- The Tauri app loads the Next.js static export from the `out/` directory in production mode.
+- In dev mode, it connects to the Next.js dev server at `http://localhost:3000`.
 - Chat data is stored in `~/.codepilot/codepilot.db` (or `./data/codepilot.db` in dev mode).
 - The app uses WAL mode for SQLite, so concurrent reads are fast.
+- For detailed build instructions, see [BUILD.md](BUILD.md).
 
 ---
 
@@ -220,7 +253,7 @@ Contributions are welcome. To get started:
 
 1. Fork the repository and create a feature branch.
 2. Install dependencies with `npm install`.
-3. Run `npm run electron:dev` to test your changes locally.
+3. Run `npm run tauri:dev` to test your changes locally.
 4. Make sure `npm run lint` passes before opening a pull request.
 5. Open a PR against `main` with a clear description of what changed and why.
 

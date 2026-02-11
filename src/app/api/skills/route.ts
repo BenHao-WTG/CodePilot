@@ -1,19 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import os from "os";
 import crypto from "crypto";
+
 
 interface SkillFile {
   name: string;
   description: string;
   content: string;
   source: "global" | "project" | "plugin" | "installed";
-  installedSource?: "agents" | "claude";
+  installedSource?: "agents" | "copilot";
   filePath: string;
 }
 
-type InstalledSource = "agents" | "claude";
+type InstalledSource = "agents" | "copilot";
 type InstalledSkill = SkillFile & { installedSource: InstalledSource; contentHash: string };
 
 function getGlobalCommandsDir(): string {
@@ -84,7 +85,7 @@ function parseSkillFrontMatter(content: string): { name?: string; description?: 
       continue;
     }
 
-    // Match description: | (multi-line YAML block scalar) — check FIRST
+    // Match description: | (multi-line YAML block scalar) â€” check FIRST
     if (/^description:\s*\|/.test(line)) {
       const descLines: string[] = [];
       for (let j = i + 1; j < lines.length; j++) {
@@ -245,13 +246,13 @@ export async function GET(request: NextRequest) {
     console.log(`[skills] Scanning installed: ${agentsSkillsDir} (exists: ${fs.existsSync(agentsSkillsDir)})`);
     console.log(`[skills] Scanning installed: ${claudeSkillsDir} (exists: ${fs.existsSync(claudeSkillsDir)})`);
     const agentsSkills = scanInstalledSkills(agentsSkillsDir, "agents");
-    const claudeSkills = scanInstalledSkills(claudeSkillsDir, "claude");
+    const claudeSkills = scanInstalledSkills(claudeSkillsDir, "copilot");
     const preferredInstalledSource: InstalledSource =
       agentsSkills.length === claudeSkills.length
-        ? "claude"
+        ? "copilot"
         : agentsSkills.length > claudeSkills.length
           ? "agents"
-          : "claude";
+          : "copilot";
     console.log(
       `[skills] Installed counts: agents=${agentsSkills.length}, claude=${claudeSkills.length}, preferred=${preferredInstalledSource}`
     );

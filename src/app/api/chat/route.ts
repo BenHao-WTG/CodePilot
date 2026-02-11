@@ -1,12 +1,11 @@
-import { NextRequest } from 'next/server';
-import { streamClaude } from '@/lib/claude-client';
+﻿import { NextRequest } from 'next/server';
+import { streamCopilot } from '@/lib/copilot-client';
 import { addMessage, getSession, updateSessionTitle, updateSdkSessionId, getSetting } from '@/lib/db';
 import type { SendMessageRequest, SSEEvent, TokenUsage, MessageContentBlock, FileAttachment } from '@/types';
 import fs from 'fs';
 import path from 'path';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +27,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Save user message — persist file metadata so attachments survive page reload
+    // Save user message â€” persist file metadata so attachments survive page reload
     let savedContent = content;
     if (files && files.length > 0) {
       const workDir = session.working_directory || process.cwd();
@@ -56,7 +55,7 @@ export async function POST(request: NextRequest) {
     // Determine model: request override > session model > default setting
     const effectiveModel = model || session.model || getSetting('default_model') || undefined;
 
-    // Determine permission mode from chat mode: code → acceptEdits, plan → plan, ask → default (no tools)
+    // Determine permission mode from chat mode: code â†’ acceptEdits, plan â†’ plan, ask â†’ default (no tools)
     const effectiveMode = mode || session.mode || 'code';
     let permissionMode: string;
     let systemPromptOverride: string | undefined;
@@ -92,8 +91,8 @@ export async function POST(request: NextRequest) {
         }))
       : undefined;
 
-    // Stream Claude response, using SDK session ID for resume if available
-    const stream = streamClaude({
+    // Stream Copilot response, using SDK session ID for resume if available
+    const stream = streamCopilot({
       prompt: content,
       sessionId: session_id,
       sdkSessionId: session.sdk_session_id || undefined,

@@ -4,6 +4,8 @@ import path from "path";
 import os from "os";
 import crypto from "crypto";
 
+export const dynamic = 'force-dynamic';
+
 function getGlobalCommandsDir(): string {
   return path.join(os.homedir(), ".claude", "commands");
 }
@@ -20,7 +22,7 @@ function getClaudeSkillsDir(): string {
   return path.join(os.homedir(), ".claude", "skills");
 }
 
-type InstalledSource = "agents" | "claude";
+type InstalledSource = "agents" | "copilot";
 type SkillSource = "global" | "project" | "installed";
 type SkillMatch = {
   filePath: string;
@@ -96,10 +98,10 @@ function getPreferredInstalledSource(): InstalledSource {
   const agentsCount = countInstalledSkills(getInstalledSkillsDir());
   const claudeCount = countInstalledSkills(getClaudeSkillsDir());
   return agentsCount === claudeCount
-    ? "claude"
+    ? "copilot"
     : agentsCount > claudeCount
       ? "agents"
-      : "claude";
+      : "copilot";
 }
 
 type InstalledMatch = {
@@ -117,8 +119,8 @@ function findInstalledSkillMatches(
   if (!installedSource || installedSource === "agents") {
     dirs.push({ dir: getInstalledSkillsDir(), source: "agents" });
   }
-  if (!installedSource || installedSource === "claude") {
-    dirs.push({ dir: getClaudeSkillsDir(), source: "claude" });
+  if (!installedSource || installedSource === "copilot") {
+    dirs.push({ dir: getClaudeSkillsDir(), source: "copilot" });
   }
 
   for (const { dir, source } of dirs) {
@@ -212,12 +214,12 @@ export async function GET(
     const url = new URL(_request.url);
     const sourceParam = url.searchParams.get("source");
     const installedSource =
-      sourceParam === "agents" || sourceParam === "claude"
+      sourceParam === "agents" || sourceParam === "copilot"
         ? (sourceParam as InstalledSource)
         : undefined;
     if (sourceParam && !installedSource) {
       return NextResponse.json(
-        { error: "Invalid source; expected 'agents' or 'claude'" },
+        { error: "Invalid source; expected 'agents' or 'copilot'" },
         { status: 400 }
       );
     }
@@ -271,12 +273,12 @@ export async function PUT(
     const url = new URL(request.url);
     const sourceParam = url.searchParams.get("source");
     const installedSource =
-      sourceParam === "agents" || sourceParam === "claude"
+      sourceParam === "agents" || sourceParam === "copilot"
         ? (sourceParam as InstalledSource)
         : undefined;
     if (sourceParam && !installedSource) {
       return NextResponse.json(
-        { error: "Invalid source; expected 'agents' or 'claude'" },
+        { error: "Invalid source; expected 'agents' or 'copilot'" },
         { status: 400 }
       );
     }
@@ -328,12 +330,12 @@ export async function DELETE(
     const url = new URL(_request.url);
     const sourceParam = url.searchParams.get("source");
     const installedSource =
-      sourceParam === "agents" || sourceParam === "claude"
+      sourceParam === "agents" || sourceParam === "copilot"
         ? (sourceParam as InstalledSource)
         : undefined;
     if (sourceParam && !installedSource) {
       return NextResponse.json(
-        { error: "Invalid source; expected 'agents' or 'claude'" },
+        { error: "Invalid source; expected 'agents' or 'copilot'" },
         { status: 400 }
       );
     }

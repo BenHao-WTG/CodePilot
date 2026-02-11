@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getSetting, setSetting } from '@/lib/db';
+
 
 /**
  * CodePilot app-level settings (stored in SQLite, separate from ~/.claude/settings.json).
