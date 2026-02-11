@@ -9,10 +9,18 @@ param(
 $ErrorActionPreference = "Stop"
 
 # Colors for output
-function Write-Info { Write-Host $args -ForegroundColor Cyan }
-function Write-Success { Write-Host $args -ForegroundColor Green }
-function Write-Error { Write-Host $args -ForegroundColor Red }
-function Write-Warning { Write-Host $args -ForegroundColor Yellow }
+function Write-Info {
+    Write-Host $args -ForegroundColor Cyan
+}
+function Write-Success {
+    Write-Host $args -ForegroundColor Green
+}
+function Write-Error {
+    Write-Host $args -ForegroundColor Red
+}
+function Write-Warning {
+    Write-Host $args -ForegroundColor Yellow
+}
 
 Write-Info "=========================================="
 Write-Info "CodePilot Windows Build Script"
