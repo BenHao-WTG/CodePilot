@@ -1,8 +1,8 @@
-# CLAUDE.md
+# COPILOT.md
 
 ## Project Overview
 
-CodePilot — Claude Code 的原生桌面 GUI 客户端，基于 Electron + Next.js。
+CodePilot — GitHub Copilot 的原生桌面 GUI 客户端，基于 Electron + Next.js。
 
 ## Release Checklist
 
@@ -25,7 +25,7 @@ CodePilot — Claude Code 的原生桌面 GUI 客户端，基于 Electron + Next
 - 新增功能前必须充分调研相关技术方案、API 兼容性、社区最佳实践
 - 涉及 Electron API 需确认目标版本支持情况
 - 涉及第三方库需确认与现有依赖的兼容性
-- 涉及 Claude Code SDK 需确认 SDK 实际支持的功能和调用方式
+- 涉及 GitHub Copilot SDK 需确认 SDK 实际支持的功能和调用方式
 - 对不确定的技术点先做 POC 验证，不要直接在主代码中试错
 
 ## Release Notes 规范
@@ -51,13 +51,13 @@ CodePilot — Claude Code 的原生桌面 GUI 客户端，基于 Electron + Next
 1. 下载对应芯片架构的 DMG 文件
 2. 打开 DMG，将 CodePilot 拖入 Applications 文件夹
 3. 首次打开时如遇安全提示，前往 **系统设置 → 隐私与安全性** 点击"仍要打开"
-4. 在 Settings 页面配置 Anthropic API Key 或环境变量
+4. 在 Settings 页面配置 GitHub Token
 
 ## Requirements
 
 - macOS 12.0+
-- Anthropic API Key 或已配置 `ANTHROPIC_API_KEY` 环境变量
-- 如需使用代码相关功能，建议安装 Claude Code CLI
+- GitHub Token（需要 Copilot 访问权限）
+- 或已配置 `GITHUB_TOKEN` 环境变量
 
 ## Changelog (since v{上一版本})
 
