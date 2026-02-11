@@ -9,11 +9,12 @@
   "description": "A native desktop GUI client for GitHub Copilot",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && powershell -File scripts/post-build.ps1",
     "start": "next start",
     "lint": "eslint",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:dev": "npx tauri dev",
+    "tauri:build": "npx tauri build",
+    "tauri:build:sidecar": "node scripts/build-sidecar.js && npx tauri build"
   },
   "dependencies": {
     "@github/copilot-sdk": "^0.1.23",

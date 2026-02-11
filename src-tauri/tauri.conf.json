@@ -4,8 +4,7 @@
   "version": "0.8.0",
   "identifier": "com.codepilot.app",
   "build": {
-    "frontendDist": "../out",
-    "devUrl": "http://localhost:3000",
+    "devUrl": "http://localhost:3002",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
@@ -16,7 +15,8 @@
         "width": 1280,
         "height": 860,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "url": "http://localhost:3002"
       }
     ],
     "security": {

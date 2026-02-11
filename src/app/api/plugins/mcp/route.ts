@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -8,6 +8,7 @@ import type {
   ErrorResponse,
   SuccessResponse,
 } from '@/types';
+
 
 function getSettingsPath(): string {
   return path.join(os.homedir(), '.claude', 'settings.json');

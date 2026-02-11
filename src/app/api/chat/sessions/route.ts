@@ -1,6 +1,7 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import { getAllSessions, createSession } from '@/lib/db';
 import type { CreateSessionRequest, SessionsResponse, SessionResponse } from '@/types';
+
 
 export async function GET() {
   try {

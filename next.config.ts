@@ -5,7 +5,7 @@ const require = createRequire(import.meta.url);
 const pkg = require("./package.json");
 
 const nextConfig: NextConfig = {
-  output: 'export',
+  output: 'standalone',
   images: {
     unoptimized: true,
   },

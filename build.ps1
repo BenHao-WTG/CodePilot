@@ -1,4 +1,4 @@
-# build.ps1 - Build CodePilot for Windows using Tauri
+﻿# build.ps1 - Build CodePilot for Windows using Tauri
 # This script builds the Next.js frontend and Tauri Windows executable
 
 param(
@@ -96,23 +96,16 @@ if (-not (Test-Path "node_modules")) {
     Write-Info ""
 }
 
-# Build Next.js application
-Write-Info "Building Next.js frontend..."
-npm run build
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "✗ Next.js build failed"
-    exit 1
-}
-Write-Success "✓ Next.js build completed"
+# Build Tauri application (it will automatically build Next.js via beforeBuildCommand)
+Write-Info "Building Tauri application..."
+Write-Info "Note: Next.js will be built automatically as part of Tauri build process"
 Write-Info ""
 
-# Build Tauri application
-Write-Info "Building Tauri Windows executable..."
 if ($Debug) {
     Write-Warning "Building in DEBUG mode..."
-    npm run tauri build -- --debug
+    npm run tauri:build -- --debug
 } else {
-    npm run tauri build
+    npm run tauri:build
 }
 
 if ($LASTEXITCODE -ne 0) {
@@ -125,7 +118,10 @@ Write-Info ""
 # Find and display the built executable
 Write-Info "Build artifacts:"
 $targetDir = if ($Debug) { "src-tauri/target/debug" } else { "src-tauri/target/release" }
-$exePath = Get-ChildItem -Path $targetDir -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+$exePath = Get-ChildItem -Path $targetDir -Filter "CodePilot.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $exePath) {
+    $exePath = Get-ChildItem -Path $targetDir -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+}
 
 if ($exePath) {
     Write-Success "  Executable: $($exePath.FullName)"
@@ -149,6 +145,8 @@ Write-Success "=========================================="
 Write-Success "Build completed successfully!"
 Write-Success "=========================================="
 Write-Info ""
-Write-Info "To run the application:"
-Write-Info "  $targetDir\codepilot.exe"
-Write-Info ""
+if ($exePath) {
+    Write-Info "To run the application:"
+    Write-Info "  $($exePath.FullName)"
+    Write-Info ""
+}

@@ -4,6 +4,8 @@ import path from 'path';
 import os from 'os';
 import type { PluginInfo, ErrorResponse, SuccessResponse } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 function getClaudeDir(): string {
   return path.join(os.homedir(), '.claude');
 }

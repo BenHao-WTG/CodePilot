@@ -1,9 +1,8 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import { resolvePendingPermission, type PermissionResult } from '@/lib/permission-registry';
 import type { PermissionResponseRequest } from '@/types';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {

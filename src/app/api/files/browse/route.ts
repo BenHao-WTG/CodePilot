@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import type { ErrorResponse } from '@/types';
+
 
 function getWindowsDrives(): string[] {
   if (process.platform !== 'win32') return [];

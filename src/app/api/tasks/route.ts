@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getTasksBySession, createTask } from '@/lib/db';
 import type { TasksResponse, TaskResponse, ErrorResponse, CreateTaskRequest } from '@/types';
+
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;

@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { scanDirectory, isPathSafe } from '@/lib/files';
 import type { FileTreeResponse, ErrorResponse } from '@/types';
+
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
