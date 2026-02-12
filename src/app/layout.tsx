@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CodePilot",
-  description: "A desktop GUI for Claude Code",
+  title: "CWorker",
+  description: "A desktop GUI for GitHub Copilot",
 };
 
 export default function RootLayout({

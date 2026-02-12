@@ -1,6 +1,6 @@
 # Windows Build Instructions
 
-This document explains how to build CodePilot for Windows using the provided PowerShell scripts.
+This document explains how to build CWorker for Windows using the provided PowerShell script.
 
 ## Prerequisites
 
@@ -47,14 +47,21 @@ npm install
 ### 3. Run the Application
 
 After building, the executable will be located at:
-- Release: `src-tauri\target\release\codepilot.exe`
-- Debug: `src-tauri\target\debug\codepilot.exe`
+- Release: `src-tauri\target\release\CWorker.exe`
+- Debug: `src-tauri\target\debug\CWorker.exe`
 
-## Build Scripts
+Simply double-click the executable or run it from the command line:
+```powershell
+.\src-tauri\target\release\CWorker.exe
+```
+
+**Note**: Node.js must be installed on the system as CWorker starts an embedded Next.js server on launch.
+
+## Build Script
 
 ### build.ps1
 
-Main build script that compiles the application.
+Main build script that compiles the complete CWorker application with embedded Next.js server.
 
 **Usage:**
 ```powershell
@@ -84,56 +91,38 @@ Main build script that compiles the application.
 1. Checks that Node.js, npm, Rust, and Cargo are installed
 2. Optionally cleans previous build artifacts
 3. Installs npm dependencies if needed
-4. Builds the Next.js frontend (static export to `out/` directory)
-5. Builds the Tauri Windows executable
-6. Reports the location and size of build artifacts
-
-### publish.ps1
-
-Release preparation script that builds and packages the application for distribution.
-
-**Usage:**
-```powershell
-.\publish.ps1 [options]
-```
-
-**Options:**
+4. Builds the Next.js application in standalone mode
+5. Prepares the Next.js server files for bundling
+6. Builds the Tauri Windows executable with embedded server
+7. Reports the location and size of build artifacts
 - `-Version <string>` - Specify version (default: from package.json)
 - `-SkipBuild` - Skip the build step (use existing build)
-- `-OutputDir <string>` - Output directory (default: "release")
 
-**Examples:**
-```powershell
-# Publish with version from package.json
-.\publish.ps1
+## Build Output
 
-# Publish specific version
-.\publish.ps1 -Version "1.0.0"
+After a successful build, you will find:
 
-# Publish without rebuilding
-.\publish.ps1 -SkipBuild
-
-# Publish to custom directory
-.\publish.ps1 -OutputDir "dist"
+### Release Build Output
+```
+src-tauri/
+└── target/
+    └── release/
+        ├── CWorker.exe          # Main executable (embedded server)
+        └── bundle/
+            ├── msi/
+            │   └── CWorker_{version}_x64_en-US.msi  # MSI installer
+            └── nsis/
+                └── CWorker_{version}_x64-setup.exe   # NSIS installer
 ```
 
-**What it does:**
-1. Runs build.ps1 to compile the application (unless -SkipBuild is used)
-2. Creates a versioned release directory
-3. Copies executables and installers with versioned names
-4. Generates SHA256 checksums for all artifacts
-5. Creates a README.txt with installation instructions
-6. Provides next steps for creating a GitHub release
+### Embedded Components
 
-**Output structure:**
-```
-release/
-├── CodePilot-0.8.0-windows.exe          # Standalone executable
-├── CodePilot-0.8.0-windows-installer.msi # MSI installer
-├── CodePilot-0.8.0-windows-setup.exe    # NSIS installer (if configured)
-├── README.txt                            # Installation guide
-└── SHA256SUMS.txt                        # Checksums
-```
+The built executable includes:
+- Tauri runtime (Rust-based)
+- Next.js server files (in resources/server/)
+- Static assets (CSS, JS, images)
+
+**Important**: The executable starts a Node.js process on launch to run the Next.js server, so Node.js must be installed on the target system.
 
 ## Build Configuration
 
@@ -142,21 +131,20 @@ release/
 The Tauri configuration is located at `src-tauri/tauri.conf.json`.
 
 **Key settings:**
-- **productName**: "CodePilot"
+- **productName**: "CWorker"
 - **version**: "0.8.0" (should match package.json)
-- **identifier**: "com.codepilot.app"
+- **identifier**: "com.cworker.app"
 - **window size**: 1280x860
 - **bundle targets**: MSI, NSIS
-
-To change the bundle format, edit the `bundle.targets` field.
+- **resources**: Includes the embedded Next.js server files
 
 ### Next.js Configuration
 
 The Next.js configuration is in `next.config.ts`.
 
 **Key settings:**
-- **output**: "export" - Generates static files for Tauri
-- **images.unoptimized**: true - Required for static export
+- **output**: "standalone" - Generates optimized server bundle
+- **images.unoptimized**: true - Required for Tauri bundling
 
 ## Troubleshooting
 
@@ -174,7 +162,7 @@ Run `npm install` to ensure all dependencies are installed.
 
 ### Next.js build fails
 
-1. Delete `.next` and `out` directories
+1. Delete `.next` directory
 2. Run `.\build.ps1 -Clean`
 
 ### Tauri build fails
@@ -185,9 +173,17 @@ Run `npm install` to ensure all dependencies are installed.
 
 ### Build succeeds but exe doesn't run
 
-1. Check for antivirus software blocking the executable
-2. Try building with `-Debug` flag to see detailed error messages
-3. Ensure all dependencies are installed
+1. Ensure Node.js is installed on the target system
+2. Check for antivirus software blocking the executable
+3. Try building with `-Debug` flag to see detailed error messages
+4. Check that port 3002 is not already in use
+
+### "Server startup timeout" error
+
+The embedded Next.js server failed to start within 30 seconds. This could be due to:
+- Antivirus blocking Node.js
+- Port 3002 is already in use
+- Node.js is not installed or not in PATH
 
 ## Development Workflow
 
@@ -199,57 +195,72 @@ npm run tauri:dev
 ```
 
 This starts:
-1. Next.js dev server on http://localhost:3000
+1. Next.js dev server on http://localhost:3002
 2. Tauri window that loads from the dev server
 3. Hot reload for both frontend and backend changes
 
-### Before Release
+### Production Build
 
 ```powershell
-# 1. Update version in package.json
-# 2. Update version in src-tauri/tauri.conf.json
-# 3. Build and publish
-.\publish.ps1 -Version "1.0.0"
+# 1. Update version in package.json and src-tauri/tauri.conf.json
+# 2. Run full build
+.\build.ps1 -Clean
+
+# 3. Test the executable
+.\src-tauri\target\release\CWorker.exe
+
+# 4. Installers are in: src-tauri\target\release\bundle\
 ```
 
 ## Continuous Integration
 
 For automated builds in CI/CD:
 
-```powershell
-# Install dependencies
-npm ci
+```yaml
+# Example GitHub Actions workflow
+steps:
+  - name: Install dependencies
+    run: npm ci
 
-# Build
-.\build.ps1 -Clean
+  - name: Install Rust
+    uses: actions-rs/toolchain@v1
+    with:
+      toolchain: stable
 
-# Publish (if on release tag)
-if ($env:GITHUB_REF -match 'refs/tags/v(.*)') {
-    $version = $matches[1]
-    .\publish.ps1 -Version $version -SkipBuild
-}
+  - name: Build application
+    run: .\build.ps1 -Clean
+    shell: pwsh
+
+  - name: Upload artifacts
+    uses: actions/upload-artifact@v3
+    with:
+      name: CWorker-Windows
+      path: |
+        src-tauri/target/release/CWorker.exe
+        src-tauri/target/release/bundle/**/*
 ```
 
 ## File Sizes
 
 Approximate sizes for reference:
 
-- **Standalone .exe**: ~15-20 MB (release), ~50-80 MB (debug)
-- **MSI installer**: ~20-25 MB
-- **NSIS installer**: ~15-20 MB
+- **Standalone .exe**: ~20-30 MB (release), ~60-100 MB (debug)
+- **MSI installer**: ~25-35 MB
+- **NSIS installer**: ~20-30 MB
+- **Embedded server files**: ~10-15 MB (included in exe)
 
 Debug builds are significantly larger due to debug symbols and lack of optimization.
 
 ## Additional Resources
 
 - [Tauri Documentation](https://tauri.app/v2/guides/)
-- [Next.js Static Export](https://nextjs.org/docs/app/building-your-application/deploying/static-exports)
+- [Next.js Standalone Output](https://nextjs.org/docs/app/api-reference/next-config-js/output)
 - [Rust Installation](https://www.rust-lang.org/tools/install)
 
 ## Support
 
 For build issues or questions:
-- Check the [GitHub Issues](https://github.com/BenHao-WTG/CodePilot/issues)
+- Check the [GitHub Issues](https://github.com/op7418/CWorker/issues)
 - Create a new issue with:
   - Build command used
   - Error messages

@@ -1,24 +1,14 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "CodePilot",
+  "productName": "CWorker",
   "version": "0.8.0",
-  "identifier": "com.codepilot.app",
+  "identifier": "com.cworker.app",
   "build": {
     "devUrl": "http://localhost:3002",
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeDevCommand": "npm run dev"
   },
   "app": {
-    "windows": [
-      {
-        "title": "CodePilot",
-        "width": 1280,
-        "height": 860,
-        "resizable": true,
-        "fullscreen": false,
-        "url": "http://localhost:3002"
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }
@@ -32,6 +22,10 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "resources": [
+      "resources/server",
+      "resources/splash.html"
     ],
     "windows": {
       "certificateThumbprint": null,

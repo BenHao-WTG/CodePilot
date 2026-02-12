@@ -1,7 +1,7 @@
 <img src="docs/icon-readme.png" width="32" height="32" alt="CodePilot" style="vertical-align: middle; margin-right: 8px;" /> CodePilot
 ===
 
-**Claude Code 的原生桌面客户端** -- 通过可视化界面进行对话、编码和项目管理，无需在终端中操作。
+**GitHub Copilot 的原生桌面客户端** -- 通过可视化界面进行对话、编码和项目管理，基于 GitHub Copilot SDK 构建。
 
 [English](./README.md) | [日本語](./README_JA.md)
 
@@ -38,10 +38,10 @@
 | 要求 | 最低版本 |
 |------|---------|
 | **Node.js** | 18+ |
-| **Claude Code CLI** | 已安装并完成认证（`claude --version` 可正常运行） |
+| **GitHub Token** | 具有 Copilot 访问权限的个人访问令牌 |
 | **npm** | 9+（Node 18 自带） |
 
-> **注意**：CodePilot 底层调用 Claude Code Agent SDK。请确保 `claude` 命令在 `PATH` 中可用，并且已完成认证（`claude login`）。
+> **注意**：CWorker 使用 GitHub Copilot SDK。请确保已配置有效的 GitHub Token。
 
 ---
 

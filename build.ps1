@@ -1,5 +1,5 @@
-﻿# build.ps1 - Build CodePilot for Windows using Tauri
-# This script builds the Next.js frontend and Tauri Windows executable
+﻿# build.ps1 - Build CWorker for Windows using Tauri
+# This script builds the complete CWorker application with embedded Next.js server
 
 param(
     [switch]$Clean = $false,
@@ -23,7 +23,7 @@ function Write-Warning {
 }
 
 Write-Info "=========================================="
-Write-Info "CodePilot Windows Build Script"
+Write-Info "CWorker Windows Build Script"
 Write-Info "=========================================="
 Write-Info ""
 
@@ -69,17 +69,17 @@ Write-Info ""
 # Clean build if requested
 if ($Clean) {
     Write-Warning "Cleaning previous builds..."
-    if (Test-Path "out") {
-        Remove-Item -Recurse -Force "out"
-        Write-Success "✓ Removed out/ directory"
+    if (Test-Path ".next") {
+        Remove-Item -Recurse -Force ".next"
+        Write-Success "✓ Removed .next/ directory"
     }
     if (Test-Path "src-tauri/target") {
         Remove-Item -Recurse -Force "src-tauri/target"
         Write-Success "✓ Removed src-tauri/target/ directory"
     }
-    if (Test-Path ".next") {
-        Remove-Item -Recurse -Force ".next"
-        Write-Success "✓ Removed .next/ directory"
+    if (Test-Path "src-tauri/resources") {
+        Remove-Item -Recurse -Force "src-tauri/resources"
+        Write-Success "✓ Removed src-tauri/resources/ directory"
     }
     Write-Info ""
 }
@@ -96,16 +96,48 @@ if (-not (Test-Path "node_modules")) {
     Write-Info ""
 }
 
-# Build Tauri application (it will automatically build Next.js via beforeBuildCommand)
-Write-Info "Building Tauri application..."
-Write-Info "Note: Next.js will be built automatically as part of Tauri build process"
+# Step 1: Build Next.js application
+Write-Info "Step 1/3: Building Next.js application..."
+npm run build
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "✗ Next.js build failed"
+    exit 1
+}
+Write-Success "✓ Next.js build completed"
 Write-Info ""
 
+# Step 2: Prepare Next.js server for bundling
+Write-Info "Step 2/3: Preparing Next.js server for bundling..."
+node scripts/build-sidecar.js
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "✗ Server preparation failed"
+    exit 1
+}
+Write-Success "✓ Server files prepared"
+
+# Clean up .next directory after copying to resources (saves disk space)
+if (Test-Path ".next") {
+    Remove-Item -Recurse -Force ".next"
+    Write-Success "✓ Cleaned up .next directory (already copied to resources)"
+}
+
+# Copy static resources to resources directory
+if (Test-Path "src-tauri/static/splash.html") {
+    if (-not (Test-Path "src-tauri/resources")) {
+        New-Item -ItemType Directory -Path "src-tauri/resources" -Force | Out-Null
+    }
+    Copy-Item -Path "src-tauri/static/splash.html" -Destination "src-tauri/resources/splash.html" -Force
+    Write-Success "✓ Copied splash.html to resources"
+}
+Write-Info ""
+
+# Step 3: Build Tauri application
+Write-Info "Step 3/3: Building Tauri application..."
 if ($Debug) {
     Write-Warning "Building in DEBUG mode..."
-    npm run tauri:build -- --debug
+    npx tauri build --debug
 } else {
-    npm run tauri:build
+    npx tauri build
 }
 
 if ($LASTEXITCODE -ne 0) {
@@ -115,10 +147,56 @@ if ($LASTEXITCODE -ne 0) {
 Write-Success "✓ Tauri build completed"
 Write-Info ""
 
+# Clean up unnecessary files in release build to reduce size
+if (-not $Debug) {
+    Write-Info "Cleaning up unnecessary files in release folder..."
+    $releaseDir = "src-tauri/target/release"
+    
+    # Remove .pdb debug files (can save hundreds of MB)
+    $pdbFiles = Get-ChildItem -Path $releaseDir -Filter "*.pdb" -ErrorAction SilentlyContinue
+    foreach ($file in $pdbFiles) {
+        Remove-Item $file.FullName -Force
+        Write-Success "  ✓ Removed $($file.Name)"
+    }
+    
+    # Remove incremental compilation files (safe to delete after build)
+    if (Test-Path "$releaseDir/incremental") {
+        Remove-Item -Recurse -Force "$releaseDir/incremental"
+        Write-Success "  ✓ Removed incremental/ directory"
+    }
+    
+    # Remove .d files (dependency files, not needed after build)
+    $dFiles = Get-ChildItem -Path $releaseDir -Filter "*.d" -ErrorAction SilentlyContinue
+    foreach ($file in $dFiles) {
+        Remove-Item $file.FullName -Force
+    }
+    if ($dFiles.Count -gt 0) {
+        Write-Success "  ✓ Removed $($dFiles.Count) .d dependency files"
+    }
+    
+    # Remove fingerprint directory (build cache, not needed)
+    if (Test-Path "$releaseDir/.fingerprint") {
+        Remove-Item -Recurse -Force "$releaseDir/.fingerprint"
+        Write-Success "  ✓ Removed .fingerprint/ directory"
+    }
+    
+    # Remove build directory (intermediate files)
+    if (Test-Path "$releaseDir/build") {
+        Remove-Item -Recurse -Force "$releaseDir/build"
+        Write-Success "  ✓ Removed build/ directory"
+    }
+    
+    Write-Info ""
+}
+
+Write-Info "Note: src-tauri/resources/ is kept for future builds"
+Write-Info "      Run with -Clean to remove all build artifacts"
+Write-Info ""
+
 # Find and display the built executable
 Write-Info "Build artifacts:"
 $targetDir = if ($Debug) { "src-tauri/target/debug" } else { "src-tauri/target/release" }
-$exePath = Get-ChildItem -Path $targetDir -Filter "CodePilot.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+$exePath = Get-ChildItem -Path $targetDir -Filter "CWorker.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $exePath) {
     $exePath = Get-ChildItem -Path $targetDir -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
 }
@@ -131,22 +209,16 @@ if ($exePath) {
     Write-Warning "  No .exe file found in $targetDir"
 }
 
-# Check for installer/bundle
-$bundleDir = "$targetDir/bundle"
-if (Test-Path $bundleDir) {
-    Write-Info "  Bundle directory: $bundleDir"
-    Get-ChildItem -Path $bundleDir -Include "*.msi","*.exe" -Recurse | ForEach-Object {
-        Write-Success "  Installer: $($_.FullName)"
-    }
-}
-
 Write-Info ""
 Write-Success "=========================================="
 Write-Success "Build completed successfully!"
 Write-Success "=========================================="
 Write-Info ""
 if ($exePath) {
-    Write-Info "To run the application:"
-    Write-Info "  $($exePath.FullName)"
+    Write-Info "To run CWorker:"
+    Write-Success "  $($exePath.FullName)"
+    Write-Info ""
+    Write-Info "Note: The executable contains an embedded Next.js server."
+    Write-Info "      Node.js is required on the target system to run the app."
     Write-Info ""
 }

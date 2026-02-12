@@ -1,10 +1,10 @@
-<img src="docs/icon-readme.png" width="32" height="32" alt="CodePilot" style="vertical-align: middle; margin-right: 8px;" /> CodePilot
+<img src="docs/icon-readme.png" width="32" height="32" alt="CWorker" style="vertical-align: middle; margin-right: 8px;" /> CWorker
 ===
 
 **A native desktop GUI for GitHub Copilot** -- chat, code, and manage projects through a polished visual interface powered by the GitHub Copilot SDK.
 
-[![GitHub release](https://img.shields.io/github/v/release/op7418/CodePilot)](https://github.com/op7418/CodePilot/releases)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)](https://github.com/op7418/CodePilot/releases)
+[![GitHub release](https://img.shields.io/github/v/release/op7418/CWorker)](https://github.com/op7418/CWorker/releases)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)](https://github.com/op7418/CWorker/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 [中文文档](./README_CN.md) | [日本語](./README_JA.md)
@@ -31,13 +31,13 @@
 
 ## Screenshots
 
-![CodePilot](docs/screenshot.png)
+![CWorker](docs/screenshot.png)
 
 ---
 
 ## Prerequisites
 
-> **Important**: CodePilot uses the GitHub Copilot SDK. You need a GitHub token with Copilot access.
+> **Important**: CWorker uses the GitHub Copilot SDK. You need a GitHub token with Copilot access.
 
 ### For Users (Pre-built Releases)
 
@@ -59,7 +59,7 @@
 
 ## Download
 
-Pre-built releases are available on the [**Releases**](https://github.com/op7418/CodePilot/releases) page.
+Pre-built releases are available on the [**Releases**](https://github.com/op7418/CWorker/releases) page.
 
 ### Supported Platforms
 
@@ -73,19 +73,19 @@ Pre-built releases are available on the [**Releases**](https://github.com/op7418
 
 ### For Users
 
-Download the latest release from the [**Releases**](https://github.com/BenHao-WTG/CodePilot/releases) page.
+Download the latest release from the [**Releases**](https://github.com/op7418/CWorker/releases) page.
 
 **Windows:**
-1. Download `CodePilot-{version}-windows-installer.msi`
+1. Download `CWorker-{version}-windows-installer.msi`
 2. Run the installer and follow the wizard
-3. Launch CodePilot from the Start Menu
+3. Launch CWorker from the Start Menu
 
 ### For Developers
 
 ```bash
 # Clone the repository
-git clone https://github.com/BenHao-WTG/CodePilot.git
-cd CodePilot
+git clone https://github.com/op7418/CWorker.git
+cd CWorker
 
 # Install dependencies
 npm install
@@ -105,15 +105,26 @@ See [BUILD.md](BUILD.md) for detailed build instructions.
 # Standard release build
 .\build.ps1
 
-# Publish release artifacts
-.\publish.ps1
+# Clean build (removes all previous build artifacts)
+.\build.ps1 -Clean
+
+# Debug build
+.\build.ps1 -Debug
 ```
+
+After building, run the application directly:
+```powershell
+# Run the built executable
+.\src-tauri\target\release\CWorker.exe
+```
+
+**Note**: The executable requires Node.js to be installed on the system as it starts an embedded Next.js server.
 
 ---
 
 ## Installation Troubleshooting
 
-CodePilot is not code-signed yet, so your operating system will display a security warning the first time you open it.
+CWorker is not code-signed yet, so your operating system will display a security warning the first time you open it.
 
 ### macOS
 
@@ -121,7 +132,7 @@ You will see a dialog that says **"Apple cannot check it for malicious software"
 
 **Option 1 -- Right-click to open**
 
-1. Right-click (or Control-click) `CodePilot.app` in Finder.
+1. Right-click (or Control-click) `CWorker.app` in Finder.
 2. Select **Open** from the context menu.
 3. Click **Open** in the confirmation dialog.
 
@@ -129,13 +140,13 @@ You will see a dialog that says **"Apple cannot check it for malicious software"
 
 1. Open **System Settings** > **Privacy & Security**.
 2. Scroll down to the **Security** section.
-3. You will see a message about CodePilot being blocked. Click **Open Anyway**.
+3. You will see a message about CWorker being blocked. Click **Open Anyway**.
 4. Authenticate if prompted, then launch the app.
 
 **Option 3 -- Terminal command**
 
 ```bash
-xattr -cr /Applications/CodePilot.app
+xattr -cr /Applications/CWorker.app
 ```
 
 This strips the quarantine attribute so macOS will no longer block the app.
@@ -241,7 +252,7 @@ npm run tauri:build
 
 - The Tauri app loads the Next.js static export from the `out/` directory in production mode.
 - In dev mode, it connects to the Next.js dev server at `http://localhost:3000`.
-- Chat data is stored in `~/.codepilot/codepilot.db` (or `./data/codepilot.db` in dev mode).
+- Chat data is stored in `~/.cworker/cworker.db` (or `./data/cworker.db` in dev mode).
 - The app uses WAL mode for SQLite, so concurrent reads are fast.
 - For detailed build instructions, see [BUILD.md](BUILD.md).
 

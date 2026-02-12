@@ -24,3 +24,12 @@ log = "0.4"
 tauri = { version = "2.0.0-rc.17", features = [] }
 tauri-plugin-log = "2.0.0-rc"
 tauri-plugin-localhost = "2.0.0-rc"
+ureq = "2.9"
+base64 = "0.22"
+
+[profile.release]
+opt-level = "z"        # Optimize for size
+lto = true             # Enable Link Time Optimization
+codegen-units = 1      # Better optimization, slower compile
+strip = true           # Remove debug symbols
+panic = "abort"        # Don't include unwinding info

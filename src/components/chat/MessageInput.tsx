@@ -31,25 +31,11 @@ import {
   PromptInputTools,
   PromptInputButton,
   PromptInputSubmit,
-  usePromptInputAttachments,
 } from '@/components/ai-elements/prompt-input';
 import { SquareIcon } from 'lucide-react';
 import type { ChatStatus } from 'ai';
 import type { FileAttachment } from '@/types';
 import { nanoid } from 'nanoid';
-
-// Accepted file types for upload
-const ACCEPTED_FILE_TYPES = [
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-  'application/pdf',
-  'text/*',
-  '.md', '.json', '.csv', '.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rs',
-].join(',');
-
-// Max file sizes
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;  // 5MB
-const MAX_DOC_SIZE = 10 * 1024 * 1024;   // 10MB
-const MAX_FILE_SIZE = MAX_DOC_SIZE;       // Use larger limit; we validate per-type in conversion
 
 interface MessageInputProps {
   onSend: (content: string, files?: FileAttachment[]) => void;
@@ -119,87 +105,20 @@ const MODE_OPTIONS: ModeOption[] = [
   { value: 'ask', label: 'Ask', icon: HelpCircleIcon, description: 'Answer questions only' },
 ];
 
-// Default Claude model options — labels are dynamically overridden by active provider
+// GitHub Copilot SDK model options
 const DEFAULT_MODEL_OPTIONS = [
-  { value: 'sonnet', label: 'Sonnet 4.5' },
-  { value: 'opus', label: 'Opus 4.6' },
-  { value: 'haiku', label: 'Haiku 4.5' },
+  { value: 'gpt-4o', label: 'GPT-4o' },
+  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+  { value: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5' },
+  { value: 'o1-preview', label: 'O1 Preview' },
+  { value: 'o1-mini', label: 'O1 Mini' },
 ];
 
-// Provider-specific model label mappings (alias → display name)
-const PROVIDER_MODEL_LABELS: Record<string, Record<string, string>> = {
-  // GLM Coding Plan (Z.AI / 智谱)
-  'https://api.z.ai/api/anthropic': {
-    sonnet: 'GLM-4.7',
-    opus: 'GLM-4.7',
-    haiku: 'GLM-4.5-Air',
-  },
-  'https://open.bigmodel.cn/api/anthropic': {
-    sonnet: 'GLM-4.7',
-    opus: 'GLM-4.7',
-    haiku: 'GLM-4.5-Air',
-  },
-  // Kimi Coding Plan
-  'https://api.kimi.com/coding/': {
-    sonnet: 'Kimi K2.5',
-    opus: 'Kimi K2.5',
-    haiku: 'Kimi K2.5',
-  },
-  // Moonshot Open Platform
-  'https://api.moonshot.ai/anthropic': {
-    sonnet: 'Kimi K2.5',
-    opus: 'Kimi K2.5',
-    haiku: 'Kimi K2.5',
-  },
-  'https://api.moonshot.cn/anthropic': {
-    sonnet: 'Kimi K2.5',
-    opus: 'Kimi K2.5',
-    haiku: 'Kimi K2.5',
-  },
-  // MiniMax Coding Plan
-  'https://api.minimaxi.com/anthropic': {
-    sonnet: 'MiniMax-M2.1',
-    opus: 'MiniMax-M2.1',
-    haiku: 'MiniMax-M2.1',
-  },
-  'https://api.minimax.io/anthropic': {
-    sonnet: 'MiniMax-M2.1',
-    opus: 'MiniMax-M2.1',
-    haiku: 'MiniMax-M2.1',
-  },
-  // OpenRouter — keeps Claude names, provider handles routing
-  'https://openrouter.ai/api': {
-    sonnet: 'Sonnet 4.5',
-    opus: 'Opus 4.6',
-    haiku: 'Haiku 4.5',
-  },
-};
+// Note: GitHub Copilot SDK handles model routing internally
+const PROVIDER_MODEL_LABELS: Record<string, Record<string, string>> = {};
 
 /**
- * Convert a data URL to a FileAttachment object.
- */
-async function dataUrlToFileAttachment(
-  dataUrl: string,
-  filename: string,
-  mediaType: string,
-): Promise<FileAttachment> {
-  // data:image/png;base64,<data>  — extract the base64 part
-  const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
-
-  // Estimate raw size from base64 length
-  const size = Math.ceil((base64.length * 3) / 4);
-
-  return {
-    id: nanoid(),
-    name: filename,
-    type: mediaType || 'application/octet-stream',
-    size,
-    data: base64,
-  };
-}
-
-/**
- * Submit button that's aware of file attachments. Must be rendered inside PromptInput.
+ * Submit button. Must be rendered inside PromptInput.
  */
 function FileAwareSubmitButton({
   status,
@@ -214,15 +133,13 @@ function FileAwareSubmitButton({
   inputValue: string;
   hasBadge: boolean;
 }) {
-  const attachments = usePromptInputAttachments();
-  const hasFiles = attachments.files.length > 0;
   const isStreaming = status === 'streaming' || status === 'submitted';
 
   return (
     <PromptInputSubmit
       status={status}
       onStop={onStop}
-      disabled={disabled || (!isStreaming && !inputValue.trim() && !hasBadge && !hasFiles)}
+      disabled={disabled || (!isStreaming && !inputValue.trim() && !hasBadge)}
       className="rounded-full"
     >
       {isStreaming ? (
@@ -231,64 +148,6 @@ function FileAwareSubmitButton({
         <HugeiconsIcon icon={ArrowUp02Icon} className="h-4 w-4" strokeWidth={2} />
       )}
     </PromptInputSubmit>
-  );
-}
-
-/**
- * Attachment button that opens the file dialog. Must be rendered inside PromptInput.
- */
-function AttachFileButton() {
-  const attachments = usePromptInputAttachments();
-
-  return (
-    <PromptInputButton
-      onClick={() => attachments.openFileDialog()}
-      tooltip="Attach files"
-    >
-      <HugeiconsIcon icon={Attachment01Icon} className="h-3.5 w-3.5" />
-    </PromptInputButton>
-  );
-}
-
-/**
- * Capsule display for attached files, rendered inside PromptInput context.
- */
-function FileAttachmentsCapsules() {
-  const attachments = usePromptInputAttachments();
-
-  if (attachments.files.length === 0) return null;
-
-  return (
-    <div className="flex w-full flex-wrap items-center gap-1.5 px-3 pt-2 pb-0 order-first">
-      {attachments.files.map((file) => {
-        const isImage = file.mediaType?.startsWith('image/');
-        return (
-          <span
-            key={file.id}
-            className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 pl-2 pr-1 py-0.5 text-xs font-medium border border-emerald-500/20"
-          >
-            {isImage && file.url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={file.url}
-                alt={file.filename || 'image'}
-                className="h-5 w-5 rounded object-cover"
-              />
-            )}
-            <span className="max-w-[120px] truncate text-[11px]">
-              {file.filename || 'file'}
-            </span>
-            <button
-              type="button"
-              onClick={() => attachments.remove(file.id)}
-              className="ml-0.5 rounded-full p-0.5 hover:bg-emerald-500/20 transition-colors"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} className="h-3 w-3" />
-            </button>
-          </span>
-        );
-      })}
-    </div>
   );
 }
 
@@ -507,32 +366,6 @@ export function MessageInput({
 
     closePopover();
 
-    // Convert PromptInput FileUIParts (with data URLs) to FileAttachment[]
-    const convertFiles = async (): Promise<FileAttachment[]> => {
-      if (!msg.files || msg.files.length === 0) return [];
-
-      const attachments: FileAttachment[] = [];
-      for (const file of msg.files) {
-        if (!file.url) continue;
-        try {
-          const attachment = await dataUrlToFileAttachment(
-            file.url,
-            file.filename || 'file',
-            file.mediaType || 'application/octet-stream',
-          );
-          // Enforce per-type size limits
-          const isImage = attachment.type.startsWith('image/');
-          const sizeLimit = isImage ? MAX_IMAGE_SIZE : MAX_DOC_SIZE;
-          if (attachment.size <= sizeLimit) {
-            attachments.push(attachment);
-          }
-        } catch {
-          // Skip files that fail conversion
-        }
-      }
-      return attachments;
-    };
-
     // If badge is active, expand the command/skill and send
     if (badge) {
       let expandedPrompt = '';
@@ -562,20 +395,16 @@ export function MessageInput({
         ? `${expandedPrompt}\n\nUser context: ${content}`
         : expandedPrompt || badge.command;
 
-      const files = await convertFiles();
       setBadge(null);
       setInputValue('');
-      onSend(finalPrompt, files.length > 0 ? files : undefined);
+      onSend(finalPrompt, undefined);
       return;
     }
 
-    const files = await convertFiles();
-    const hasFiles = files.length > 0;
-
-    if ((!content && !hasFiles) || disabled) return;
+    if (!content || disabled) return;
 
     // Check if it's a direct slash command typed in the input
-    if (content.startsWith('/') && !hasFiles) {
+    if (content.startsWith('/')) {
       const cmd = BUILT_IN_COMMANDS.find(c => c.value === content);
       if (cmd) {
         if (cmd.immediate && onCommand) {
@@ -608,7 +437,7 @@ export function MessageInput({
       }
     }
 
-    onSend(content || 'Please review the attached file(s).', hasFiles ? files : undefined);
+    onSend(content, undefined);
     setInputValue('');
   }, [inputValue, onSend, onCommand, disabled, closePopover, badge]);
 
@@ -838,9 +667,6 @@ export function MessageInput({
           {/* PromptInput replaces the old input area */}
           <PromptInput
             onSubmit={handleSubmit}
-            accept={ACCEPTED_FILE_TYPES}
-            multiple
-            maxFileSize={MAX_FILE_SIZE}
           >
             {/* Command badge */}
             {badge && (
@@ -862,11 +688,9 @@ export function MessageInput({
                 </span>
               </div>
             )}
-            {/* File attachment capsules */}
-            <FileAttachmentsCapsules />
             <PromptInputTextarea
               ref={textareaRef}
-              placeholder={badge ? "Add details (optional), then press Enter..." : "Message Claude..."}
+              placeholder={badge ? "Add details (optional), then press Enter..." : "Message GitHub Copilot..."}
               value={inputValue}
               onChange={(e) => handleInputChange(e.currentTarget.value)}
               onKeyDown={handleKeyDown}
@@ -875,9 +699,6 @@ export function MessageInput({
             />
             <PromptInputFooter>
               <PromptInputTools>
-                {/* Attach file button */}
-                <AttachFileButton />
-
                 {/* Folder picker button */}
                 <PromptInputButton
                   onClick={() => setFolderPickerOpen(true)}

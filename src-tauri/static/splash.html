@@ -1,0 +1,136 @@
+﻿&lt;!DOCTYPE html&gt;
+&lt;html lang="zh-CN"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;title&gt;启动中...&lt;/title&gt;
+    &lt;style&gt;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+        }
+        
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 40px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .logo svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.9;
+            }
+        }
+        
+        .loading-text {
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .status-text {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            margin-bottom: 30px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .progress-container {
+            width: 300px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: white;
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        @keyframes indeterminate {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(400%);
+            }
+        }
+        
+        .progress-bar.indeterminate {
+            width: 25%;
+            animation: indeterminate 1.5s ease-in-out infinite;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div class="logo"&gt;
+        &lt;svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"&gt;
+            &lt;circle cx="50" cy="50" r="45" fill="white" opacity="0.9"/&gt;
+            &lt;path d="M30 50 L45 35 L45 65 Z" fill="#667eea"/&gt;
+            &lt;path d="M55 35 L70 50 L55 65 Z" fill="#764ba2"/&gt;
+        &lt;/svg&gt;
+    &lt;/div&gt;
+    
+    &lt;div class="loading-text"&gt;正在启动 CodePilot&lt;/div&gt;
+    &lt;div class="status-text" id="status"&gt;初始化中...&lt;/div&gt;
+    
+    &lt;div class="progress-container"&gt;
+        &lt;div class="progress-bar indeterminate" id="progress"&gt;&lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;script&gt;
+        // Listen for startup status events from Tauri
+        if (window.__TAURI_INTERNALS__) {
+            const { listen } = window.__TAURI_INTERNALS__.event;
+            
+            listen('startup-status', (event) =&gt; {
+                const { message, progress } = event.payload;
+                const statusEl = document.getElementById('status');
+                const progressEl = document.getElementById('progress');
+                
+                if (statusEl) {
+                    statusEl.textContent = message;
+                }
+                
+                if (progressEl && typeof progress === 'number') {
+                    progressEl.classList.remove('indeterminate');
+                    progressEl.style.width = progress + '%';
+                }
+            });
+        }
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;

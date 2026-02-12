@@ -3,8 +3,8 @@ import path from 'path';
 import crypto from 'crypto';
 import type { ChatSession, Message, SettingsMap, TaskItem, TaskStatus, ApiProvider, CreateProviderRequest, UpdateProviderRequest } from '@/types';
 
-const dataDir = process.env.CLAUDE_GUI_DATA_DIR || path.join(require('os').homedir(), '.codepilot');
-const DB_PATH = path.join(dataDir, 'codepilot.db');
+const dataDir = process.env.CWORKER_DATA_DIR || path.join(require('os').homedir(), '.cworker');
+const DB_PATH = path.join(dataDir, 'cworker.db');
 
 let db: Database.Database | null = null;
 
@@ -21,10 +21,12 @@ export function getDb(): Database.Database {
     if (!fs.existsSync(DB_PATH)) {
       const home = os.homedir();
       const oldPaths = [
-        // Old Electron userData paths (app.getPath('userData'))
+        // Old CodePilot paths for migration
         path.join(home, 'Library', 'Application Support', 'CodePilot', 'codepilot.db'),
         path.join(home, 'Library', 'Application Support', 'codepilot', 'codepilot.db'),
         path.join(home, 'Library', 'Application Support', 'Claude GUI', 'codepilot.db'),
+        // Old codepilot location
+        path.join(home, '.codepilot', 'codepilot.db'),
         // Old dev-mode fallback
         path.join(process.cwd(), 'data', 'codepilot.db'),
         // Legacy name

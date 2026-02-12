@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/tooltip";
 
 export function Header() {
-  const { theme, setTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -28,10 +28,10 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
                 className="h-7 w-7"
               >
-                {theme === "dark" ? (
+                {resolvedTheme === "dark" ? (
                   <HugeiconsIcon icon={Sun02Icon} className="h-4 w-4" />
                 ) : (
                   <HugeiconsIcon icon={Moon02Icon} className="h-4 w-4" />
@@ -40,7 +40,7 @@ export function Header() {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              {theme === "dark" ? "Light mode" : "Dark mode"}
+              {resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
             </TooltipContent>
           </Tooltip>
         )}

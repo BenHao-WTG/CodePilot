@@ -1,5 +1,5 @@
 {
-  "name": "codepilot",
+  "name": "cworker",
   "version": "0.8.0",
   "private": true,
   "author": {
@@ -13,13 +13,14 @@
     "start": "next start",
     "lint": "eslint",
     "tauri:dev": "npx tauri dev",
-    "tauri:build": "npx tauri build",
+    "tauri:build": "npm run build && node scripts/build-sidecar.js && npx tauri build",
     "tauri:build:sidecar": "node scripts/build-sidecar.js && npx tauri build"
   },
   "dependencies": {
     "@github/copilot-sdk": "^0.1.23",
     "@hugeicons/core-free-icons": "^3.1.1",
     "@hugeicons/react": "^1.1.4",
+    "@tauri-apps/api": "^2.0.0-rc.6",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@streamdown/cjk": "^1.0.1",
     "@streamdown/code": "^1.0.1",

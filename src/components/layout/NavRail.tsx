@@ -13,6 +13,7 @@ import {
   Settings02Icon,
   Moon02Icon,
   Sun02Icon,
+  ServerStack01Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,13 +33,14 @@ interface NavRailProps {
 const navItems = [
   { href: "/chat", label: "Chats", icon: Message02Icon },
   { href: "/extensions", label: "Extensions", icon: GridIcon },
+  { href: "/server-status", label: "Server Status", icon: ServerStack01Icon },
   { href: "/settings", label: "Settings", icon: Settings02Icon },
 ] as const;
 
 export function NavRail({ chatListOpen, onToggleChatList, hasUpdate, skipPermissionsActive }: NavRailProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isChatRoute = pathname === "/chat" || pathname.startsWith("/chat/");
 
@@ -152,10 +154,12 @@ export function NavRail({ chatListOpen, onToggleChatList, hasUpdate, skipPermiss
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                onClick={() => {
+                  setTheme(resolvedTheme === "dark" ? "light" : "dark");
+                }}
                 className="h-8 w-8"
               >
-                {theme === "dark" ? (
+                {resolvedTheme === "dark" ? (
                   <HugeiconsIcon icon={Sun02Icon} className="h-4 w-4" />
                 ) : (
                   <HugeiconsIcon icon={Moon02Icon} className="h-4 w-4" />
@@ -164,7 +168,7 @@ export function NavRail({ chatListOpen, onToggleChatList, hasUpdate, skipPermiss
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              {theme === "dark" ? "Light mode" : "Dark mode"}
+              {resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
             </TooltipContent>
           </Tooltip>
         )}
